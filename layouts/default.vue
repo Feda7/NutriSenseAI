@@ -1,7 +1,7 @@
 <template>
     <div>
         <header>
-            <nav class="flex justify-between items-center px-8 py-4 bg-white shadow-md sticky top-0 z-50">
+            <nav class="flex justify-between items-center px-8 py-4 bg-white shadow-md z-50">
                 <!-- Logo -->
                 <div class="text-2xl font-bold text-green-600">
                 NutriSense AI
@@ -9,9 +9,9 @@
 
                 <!-- Links -->
                 <ul class="flex gap-8 text-gray-700 font-medium">
-                <li><NuxtLink to="/">index</NuxtLink></li>
-                <li><NuxtLink to="/food">Food</NuxtLink></li>
-                <li><NuxtLink to="/progress">Progress</NuxtLink></li>
+                    <li><NuxtLink to="/">Home</NuxtLink></li>
+                    <li><NuxtLink to="/food">Food</NuxtLink></li>
+                    <li><NuxtLink to="/progress">Progress</NuxtLink></li>
                 </ul>
 
                 <!-- Profile -->
