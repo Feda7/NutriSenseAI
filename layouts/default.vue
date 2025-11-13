@@ -1,6 +1,7 @@
 <template>
     <div>
         <header>
+            <title>NutriSenseAI</title>
             <nav class="flex justify-between items-center px-8 py-4 bg-white shadow-md z-50">
                 <!-- Logo -->
                 <div class="text-2xl font-bold text-green-600">
