@@ -1,5 +1,6 @@
 <template>
-    <div class="min-h-screen bg-gray-50 px-6 py-10">
+    <section class="max-full bg-gray-50 px-56">
+    <div class="min-h-screen  px-6 py-10">
     
     <!-- Daily Summary Section -->
     <SummarySection
@@ -18,6 +19,7 @@
     />
 
     </div>
+    </section>
 </template>
 
 <script setup>
@@ -53,8 +55,8 @@ function analyzeImageForMeal(mealName, imageFile) {
     carbs: 18,
     fat: 12
     }
-meals.value[mealName].push(aiResult)
-consumed.value += aiResult.calories
-remaining.value = userCalories.value - consumed.value
+  meals.value[mealName].push(aiResult)
+  consumed.value += aiResult.calories
+  remaining.value = userCalories.value - consumed.value
 }
 </script>

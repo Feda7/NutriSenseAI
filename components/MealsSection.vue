@@ -1,45 +1,54 @@
 <template>
-    <div class="max-w-3xl mx-auto space-y-8">
-
-        <MealCard
+    <div class="space-y-8 px-6">
+        <MealCard 
         title="Breakfast"
-        :items="meals.breakfast"
         mealName="breakfast"
-        @addFood="add"
-        @uploadImage="upload"
+        :items="meals.breakfast"
+        :dietType="dietType"
+        @addFood="addFood"
+        @uploadImage="uploadImage"
         />
 
-        <MealCard
+        <MealCard 
         title="Lunch"
-        :items="meals.lunch"
         mealName="lunch"
-        @addFood="add"
-        @uploadImage="upload"
+        :items="meals.lunch"
+        :dietType="dietType"
+        @addFood="addFood"
+        @uploadImage="uploadImage"
         />
 
-        <MealCard
+        <MealCard 
         title="Dinner"
-        :items="meals.dinner"
         mealName="dinner"
-        @addFood="add"
-        @uploadImage="upload"
+        :items="meals.dinner"
+        :dietType="dietType"
+        @addFood="addFood"
+        @uploadImage="uploadImage"
         />
 
-        <MealCard
+        <MealCard 
         title="Snacks"
-        :items="meals.snacks"
         mealName="snacks"
-        @addFood="add"
-        @uploadImage="upload"
+        :items="meals.snacks"
+        :dietType="dietType"
+        @addFood="addFood"
+        @uploadImage="uploadImage"
         />
-
     </div>
 </template>
 
 <script setup>
-const props = defineProps(['meals'])
-const emit = defineEmits(['addFood', 'uploadImage'])
+import MealCard from "./MealCard.vue";
 
-const add = (meal, food) => emit('addFood', meal, food)
-const upload = (meal, img) => emit('uploadImage', meal, img)
+const props = defineProps(["meals", "dietType"]);
+const emit = defineEmits(["addFood", "uploadImage"]);
+
+function addFood(meal, food) {
+    emit("addFood", meal, food);
+}
+
+function uploadImage(meal, file) {
+    emit("uploadImage", meal, file);
+}
 </script>

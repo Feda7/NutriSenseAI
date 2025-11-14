@@ -70,11 +70,12 @@
           v-model="settings.diet"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
         >
-          <option value="">Select diet type</option>
-          <option value="Keto">Keto</option>
-          <option value="Low Carb">Low Carb</option>
-          <option value="Balanced">Balanced</option>
-          <option value="High Protein">High Protein</option>
+          <option value="">Select Diet Type</option>
+          <option value="Bland">Bland Diet</option>
+          <option value="High-Protein">High-Protein</option> 
+          <option value="High-Fiber">High-Fiber</option> 
+          <option value="Low-Saturated Fat">Low-Saturated Fat</option>
+          <option value="DASH">DASH</option>
         </select>
       </div>
 

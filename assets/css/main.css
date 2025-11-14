@@ -1,3 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.inputt {
+  @apply border rounded-lg w-full px-3 py-1;
+}
