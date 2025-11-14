@@ -3,10 +3,15 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-semibold text-green-600">Profile</h2>
+
+      <!-- زر Edit / Save -->
       <button
         type="button"
         @click="toggleEdit"
-        class="text-green-600 font-medium hover:text-green-700 transition"
+        :disabled="editing && !isFormValid"
+        class="text-green-600 font-medium transition
+               hover:text-green-700
+               disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {{ editing ? 'Save ' : 'Edit Profile ' }}
       </button>
@@ -20,12 +25,17 @@
         class="w-56 h-56 rounded-full border object-cover"
       />
       <div>
-        <input type="file" id="photoInput" class="hidden" @change="handlePhoto" />
+        <input
+          type="file"
+          id="photoInput"
+          class="hidden"
+          @change="handlePhoto"
+        />
         <button
           v-if="editing"
           type="button"
           @click="choosePhoto"
-          class="bg-gray-100 text-sm text-gray-600 px-3 py-1 rounded-lg hover:bg-green-500 hover:text-white "
+          class="bg-gray-100 text-sm text-gray-600 px-3 py-1 rounded-lg border border-green-600 font-semibold hover:bg-green-50"
         >
           Change Photo
         </button>
@@ -103,26 +113,46 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-// نستقبل بيانات المستخدم من الصفحة الرئيسية
+// استقبال بيانات المستخدم من الصفحة الرئيسية
 const props = defineProps(['user'])
 const emit = defineEmits(['updateUser'])
 
-// ننسخ بيانات المستخدم محلياً حتى نقدر نعدلها
+// نسخة محلية للتعديل
 const localUser = ref({ ...props.user })
 
-// هذا المتغير يتحكم في وضع التعديل
+// وضع التعديل
 const editing = ref(false)
 
-// زر التبديل بين Edit / Save
+// تحقق الحقول كاملة
+const isFormValid = computed(() => {
+  const u = localUser.value
+  return (
+    u.photo &&
+    u.name &&
+    u.age &&
+    u.height &&
+    u.weight &&
+    u.about &&
+    u.reason &&
+    u.inspiration
+  )
+})
+
+// زر Edit / Save
 function toggleEdit() {
-  // إذا كنا في وضع "Save"، نحدث البيانات الأصلية
   if (editing.value) {
+    // منع الحفظ إذا في حقل فاضي
+    if (!isFormValid.value) {
+      alert('⚠ Please fill all fields before saving.')
+      return
+    }
+
     emit('updateUser', localUser.value)
     alert('✅ Profile updated successfully!')
   }
-  // بعدين نعكس الوضع (من Edit إلى Save والعكس)
+
   editing.value = !editing.value
 }
 
@@ -131,16 +161,15 @@ function choosePhoto() {
   document.getElementById('photoInput').click()
 }
 
-// التعامل مع الصورة الجديدة
+// تحميل صورة جديدة
 function handlePhoto(e) {
   const file = e.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      localUser.value.photo = event.target.result
-      emit('updateUser', localUser.value)
-    }
-    reader.readAsDataURL(file)
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (evt) => {
+    localUser.value.photo = evt.target.result
   }
+  reader.readAsDataURL(file)
 }
 </script>

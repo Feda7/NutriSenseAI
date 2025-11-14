@@ -2,7 +2,7 @@
     <div class="min-h-screen bg-gray-50 font-sans py-12 px-4 ">
   <section class="h-auto py-8 my-10 bg-white shadow-md  rounded-2xl  max-w-3xl mx-auto ">
     <div class="space-y-4 m-10">
-      <h2 class="text-2xl font-semibold text-green-600 mb-16 ">Create Your Account</h2>
+      <h2 class="text-2xl font-semibold text-green-600 mb-16">Create Your Account</h2>
 
       <!-- Full Name -->
       <div>
@@ -40,7 +40,6 @@
           @click="showPassword = !showPassword"
           class="absolute right-3 top-9 text-gray-500"
         >
-          {{ showPassword ? '' : '' }}
         </button>
       </div>
 
@@ -99,7 +98,7 @@
       </div>
 
       <!-- Goal -->
-      <div >
+      <div>
         <label class="block text-gray-700 mb-1">Goal</label>
         <select
           v-model="localData.goal"
@@ -110,60 +109,55 @@
           <option value="Gain Weight">Gain Weight</option>
           <option value="Maintain Weight">Maintain Weight</option>
         </select>
-
       </div>
 
       <!-- Buttons -->
-      <div class=" flex items-center justify-center space-x-6  ">
+      <div class="flex items-center justify-center space-x-6">
         
-        
-         <button
-          @click="back"
-          class="mt-14 bg-white text-green-600 px-10  py-2 rounded-xl hover:bg-green-100 "
-        >
-          <NuxtLink to="/SectionWelcome">Back</NuxtLink>
-        </button>
-        <button
-          @click="next"
-          class="mt-14 bg-green-600 text-white px-10 py-2 rounded-xl hover:bg-green-700" type="submit"
-        >
-          <NuxtLink to="/profile"> Go </NuxtLink>
-        </button>
+        <NuxtLink to="/SectionWelcome">
+          <button
+            class="mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600    font-semibold hover:bg-green-50 "
+          >
+            Back
+          </button>
+        </NuxtLink>
+
+        <NuxtLink :to="isFormValid ? '/profile' : ''">
+          <button
+            class="mt-14 bg-green-600 text-white px-10 py-2 rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="!isFormValid"
+          >
+            Go
+          </button>
+        </NuxtLink>
+
       </div>
 
-      
     </div>
   </section>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const modelValue = defineModel()
-const emit = defineEmits(['next'])
-
 const localData = ref({ ...modelValue.value })
-
 const showPassword = ref(false)
 
 watch(localData, () => (modelValue.value = localData.value))
 
-function next() {
-  if (
-    !localData.value.fullName ||
-    !localData.value.email ||
-    !localData.value.password ||
-    !localData.value.birthDate ||
-    !localData.value.activity ||
-    !localData.value.medical ||
-    !localData.value.diet ||
-    !localData.value.goal
-  ) {
-    alert('⚠ Please fill all fields.')
-    return
-  }
-
-  emit('next')
-}
+// 🔥 التحقق من اكتمال جميع الحقول
+const isFormValid = computed(() => {
+  return (
+    localData.value.fullName &&
+    localData.value.email &&
+    localData.value.password &&
+    localData.value.birthDate &&
+    localData.value.activity &&
+    localData.value.medical &&
+    localData.value.diet &&
+    localData.value.goal
+  )
+})
 </script>

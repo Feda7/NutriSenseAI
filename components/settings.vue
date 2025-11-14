@@ -20,7 +20,6 @@
           v-model="settings.email"
           type="email"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
-          placeholder="example@email.com"
         />
       </div>
 
@@ -37,9 +36,7 @@
           type="button"
           @click="togglePassword"
           class="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
-        >
-          {{ showPassword ? '' : '' }}
-        </button>
+        ></button>
       </div>
 
       <!-- Daily Calorie Goal -->
@@ -49,7 +46,6 @@
           v-model="settings.goal"
           type="number"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
-          placeholder="e.g. 1800"
         />
       </div>
 
@@ -100,7 +96,10 @@
       <!-- Save Button -->
       <button
         type="submit"
-        class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl hover:bg-green-700 transition-all"
+        :disabled="!isFormValid"
+        class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
+               hover:bg-green-700 transition-all
+               disabled:opacity-40 disabled:cursor-not-allowed"
       >
         Save Changes
       </button>
@@ -109,13 +108,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-// Receive user data from parent
 const props = defineProps(['user'])
 const emit = defineEmits(['updateUser'])
 
-// Local copy of settings to allow editing
+// Local settings model
 const settings = ref({
   birthdate: props.user.birthdate || '',
   email: props.user.email || '',
@@ -123,32 +121,32 @@ const settings = ref({
   goal: props.user.goal || '',
   activity: props.user.activity || '',
   diet: props.user.diet || '',
-  health: props.user.health || ''  // الحقل الجديد
+  health: props.user.health || ''
 })
 
-// Password visibility toggle
+// Password visibility
 const showPassword = ref(false)
 function togglePassword() {
   showPassword.value = !showPassword.value
 }
 
-// Save button handler
-function saveSettings() {
-  // Validate all fields
-  if (
-    !settings.value.birthdate ||
-    !settings.value.email ||
-    !settings.value.password ||
-    !settings.value.goal ||
-    !settings.value.activity ||
-    !settings.value.diet ||
-    !settings.value.health  // تحقق من الحقل الجديد
-  ) {
-    alert('⚠ Please fill in all fields before saving.')
-    return
-  }
+// 🔥 Check if all fields are filled
+const isFormValid = computed(() => {
+  return (
+    settings.value.birthdate &&
+    settings.value.email &&
+    settings.value.password &&
+    settings.value.goal &&
+    settings.value.activity &&
+    settings.value.diet &&
+    settings.value.health
+  )
+})
 
-  // Emit updated data to parent
+// Save changes
+function saveSettings() {
+  if (!isFormValid.value) return
+
   emit('updateUser', { ...settings.value })
   alert('✅ Settings saved successfully!')
 }

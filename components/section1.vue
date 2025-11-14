@@ -18,9 +18,7 @@
                
                 <NuxtLink to="/SectionWelcome"> Get Started</NuxtLink>
                 </button>
-                <button class="border border-green-600 text-green-600 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-all">
-                Learn More
-                </button>
+                
             </div>
             </div>
 
