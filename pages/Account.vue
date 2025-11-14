@@ -69,13 +69,13 @@
 
       <!-- Medical Condition -->
       <div>
-        <label class="block text-gray-700 mb-1">Medical Condition</label>
+        <label class="block text-gray-700 mb-1">Health Condition</label>
         <select
           v-model="localData.medical"
           class="w-full border rounded-lg px-4 py-2"
         >
-          <option value="">Select Condition</option>
-          <option value="Blood Pressure">Blood Pressure</option>
+          <option value="">Select health condition</option>
+          <option value="Hypertension">Hypertension</option>
           <option value="Diabetes">Diabetes</option>
           <option value="Colon">Colon</option>
           <option value="Cholesterol">Cholesterol</option>
@@ -90,10 +90,11 @@
           class="w-full border rounded-lg px-4 py-2"
         >
           <option value="">Select Diet Type</option>
-          <option value="Carb">Carb</option>
-          <option value="Keto">Keto</option>
-          <option value="High Protein">High Protein</option>
-          <option value="Low Carb">Low Carb</option>
+          <option value="Bland">Bland Diet</option>
+          <option value="High-Protein">High-Protein</option> 
+          <option value="High-Fiber">High-Fiber</option> 
+          <option value="Low-Saturated Fat">Low-Saturated Fat</option>
+          <option value="DASH">DASH</option>
         </select>
       </div>
 

@@ -2,9 +2,11 @@
   <div class="min-h-screen bg-gray-50 font-sans py-10 px-4">
     <!-- Header -->
     
-      <div class="flex justify-center items-center py-6">
-        <h1 class="text-3xl font-bold text-green-600 ">Track Your Progress</h1>
-      </div>
+      <div class="ml-20">
+            <h2 class="text-3xl font-bold text-green-600 mb-8 ">Track Your Progress</h2>
+        </div>
+       
+      
     
 
     <!-- Daily Summary Cards -->
