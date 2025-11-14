@@ -25,7 +25,7 @@
           v-if="editing"
           type="button"
           @click="choosePhoto"
-          class="bg-gray-100 text-sm text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-200"
+          class="bg-gray-100 text-sm text-gray-600 px-3 py-1 rounded-lg hover:bg-green-500 hover:text-white "
         >
           Change Photo
         </button>

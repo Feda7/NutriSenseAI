@@ -1,7 +1,48 @@
 <template>
   <div class="bg-white shadow-md rounded-2xl p-6 mx-auto">
     <h2 class="text-2xl font-semibold text-green-600 mb-4">Settings</h2>
+
     <form class="space-y-4" @submit.prevent="saveSettings">
+      <!-- Birthday -->
+      <div>
+        <label class="block text-gray-600 mb-1">Birthday</label>
+        <input
+          v-model="settings.birthdate"
+          type="date"
+          class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
+        />
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label class="block text-gray-600 mb-1">Email</label>
+        <input
+          v-model="settings.email"
+          type="email"
+          class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
+          placeholder="example@email.com"
+        />
+      </div>
+
+      <!-- Password with show/hide -->
+      <div class="relative">
+        <label class="block text-gray-600 mb-1">Password</label>
+        <input
+          :type="showPassword ? 'text' : 'password'"
+          v-model="settings.password"
+          class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 pr-10"
+          placeholder="Enter your password"
+        />
+        <button
+          type="button"
+          @click="togglePassword"
+          class="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+        >
+          {{ showPassword ? '' : '' }}
+        </button>
+      </div>
+
+      <!-- Daily Calorie Goal -->
       <div>
         <label class="block text-gray-600 mb-1">Daily Calorie Goal</label>
         <input
@@ -12,31 +53,51 @@
         />
       </div>
 
+      <!-- Activity Level -->
       <div>
         <label class="block text-gray-600 mb-1">Activity Level</label>
         <select
           v-model="settings.activity"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
         >
-          <option>Low</option>
-          <option>Moderate</option>
-          <option>High</option>
+          <option value="">Select activity level</option>
+          <option value="Low">Low</option>
+          <option value="Moderate">Moderate</option>
+          <option value="High">High</option>
         </select>
       </div>
 
+      <!-- Preferred Diet -->
       <div>
         <label class="block text-gray-600 mb-1">Preferred Diet</label>
         <select
           v-model="settings.diet"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
         >
-          <option>Keto</option>
-          <option>Low Carb</option>
-          <option>Balanced</option>
-          <option>High Protein</option>
+          <option value="">Select diet type</option>
+          <option value="Keto">Keto</option>
+          <option value="Low Carb">Low Carb</option>
+          <option value="Balanced">Balanced</option>
+          <option value="High Protein">High Protein</option>
         </select>
       </div>
 
+      <!-- Health Condition -->
+      <div>
+        <label class="block text-gray-600 mb-1">Health Condition</label>
+        <select
+          v-model="settings.health"
+          class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
+        >
+          <option value="">Select health condition</option>
+          <option value="Hypertension">Hypertension</option>
+          <option value="Diabetes">Diabetes</option>
+          <option value="Colon">Colon</option>
+          <option value="Cholesterol">Cholesterol</option>
+        </select>
+      </div>
+
+      <!-- Save Button -->
       <button
         type="submit"
         class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl hover:bg-green-700 transition-all"
@@ -49,17 +110,46 @@
 
 <script setup>
 import { ref } from 'vue'
+
+// Receive user data from parent
 const props = defineProps(['user'])
 const emit = defineEmits(['updateUser'])
 
+// Local copy of settings to allow editing
 const settings = ref({
-  goal: '',
-  activity: '',
-  diet: props.user.diet
+  birthdate: props.user.birthdate || '',
+  email: props.user.email || '',
+  password: props.user.password || '',
+  goal: props.user.goal || '',
+  activity: props.user.activity || '',
+  diet: props.user.diet || '',
+  health: props.user.health || ''  // الحقل الجديد
 })
 
+// Password visibility toggle
+const showPassword = ref(false)
+function togglePassword() {
+  showPassword.value = !showPassword.value
+}
+
+// Save button handler
 function saveSettings() {
-  emit('updateUser', settings.value)
+  // Validate all fields
+  if (
+    !settings.value.birthdate ||
+    !settings.value.email ||
+    !settings.value.password ||
+    !settings.value.goal ||
+    !settings.value.activity ||
+    !settings.value.diet ||
+    !settings.value.health  // تحقق من الحقل الجديد
+  ) {
+    alert('⚠ Please fill in all fields before saving.')
+    return
+  }
+
+  // Emit updated data to parent
+  emit('updateUser', { ...settings.value })
   alert('✅ Settings saved successfully!')
 }
 </script>
