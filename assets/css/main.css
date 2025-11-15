@@ -5,3 +5,6 @@
 .inputt {
   @apply border rounded-lg w-full px-3 py-1;
 }
+body{
+    @apply bg-gray-50;
+}
