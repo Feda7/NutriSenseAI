@@ -10,15 +10,15 @@
 
                 <!-- Links -->
                 <ul class="flex gap-8 text-white font-medium ">
-                    <li class="hover:text-lg hover:text-black"><NuxtLink to="/">Home</NuxtLink></li>
-                    <li class="hover:text-lg hover:text-black"><NuxtLink to="/food">Food</NuxtLink></li>
-                    <li class="hover:text-lg hover:text-black"><NuxtLink to="/progress">Progress</NuxtLink></li>
+                    <li class="hover:text-lg hover:text-gray-600"><NuxtLink to="/">Home</NuxtLink></li>
+                    <li class="hover:text-lg hover:text-gray-600"><NuxtLink to="/food">Food</NuxtLink></li>
+                    <li class="hover:text-lg hover:text-gray-600"><NuxtLink to="/progress">Progress</NuxtLink></li>
                 </ul>
 
                 <!-- Profile -->
                 <div class="flex items-center gap-3">
                 <img src="#" alt="Profile" class="w-8 h-8 rounded-full border" />
-                <NuxtLink to="/profile" class="text-white hover:text-black font-medium">Profile</NuxtLink>
+                <NuxtLink to="/profile" class="text-white hover:text-gray-600 font-medium">Profile</NuxtLink>
                 </div>
             </nav>
         </header>
