@@ -63,9 +63,9 @@
         </select>
       </div>
 
-      <!-- Preferred Diet -->
+      <!--  Diet -->
       <div>
-        <label class="block text-gray-600 mb-1">Preferred Diet</label>
+        <label class="block text-gray-600 mb-1">Diet Type</label>
         <select
           v-model="settings.diet"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
@@ -79,31 +79,61 @@
         </select>
       </div>
 
-      <!-- Health Condition -->
+      <!-- Health Condition (Multi-select) -->
       <div>
         <label class="block text-gray-600 mb-1">Health Condition</label>
-        <select
-          v-model="settings.health"
-          class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
-        >
-          <option value="">Select health condition</option>
-          <option value="Hypertension">Hypertension</option>
-          <option value="Diabetes">Diabetes</option>
-          <option value="Colon">Colon</option>
-          <option value="Cholesterol">Cholesterol</option>
-        </select>
+        <div class="space-y-2">
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="No Condition" v-model="settings.health" />
+            <span>No Condition</span>
+          </label>
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="Hypertension" v-model="settings.health" />
+            <span>Hypertension</span>
+          </label>
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="Diabetes" v-model="settings.health" />
+            <span>Diabetes</span>
+          </label>
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="Colon" v-model="settings.health" />
+            <span>Colon</span>
+          </label>
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="Cholesterol" v-model="settings.health" />
+            <span>Cholesterol</span>
+          </label>
+        </div>
       </div>
 
-      <!-- Save Button -->
-      <button
-        type="submit"
-        :disabled="!isFormValid"
-        class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
-               hover:bg-green-700 transition-all
-               disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Save Changes
-      </button>
+      <!-- Buttons -->
+      <div class="flex space-x-4">
+        <!-- Save Button -->
+        <button
+          type="submit"
+          :disabled="!isFormValid"
+          class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
+                 hover:bg-green-700 transition-all
+                 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Save Changes
+        </button>
+
+        <!-- Logout Button -->
+         <NuxtLink :to="isFormValid ? '/register' : ''">
+            <button
+              type="button"
+              @click="logout"
+              class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
+                    hover:bg-green-700 transition-all"
+            >
+              Logout
+            </button>
+         </NuxtLink>
+
+         
+           
+      </div>
     </form>
   </div>
 </template>
@@ -122,7 +152,7 @@ const settings = ref({
   goal: props.user.goal || '',
   activity: props.user.activity || '',
   diet: props.user.diet || '',
-  health: props.user.health || ''
+  health: props.user.health ? [...props.user.health] : []  // متعدد
 })
 
 // Password visibility
@@ -140,7 +170,7 @@ const isFormValid = computed(() => {
     settings.value.goal &&
     settings.value.activity &&
     settings.value.diet &&
-    settings.value.health
+    settings.value.health.length > 0
   )
 })
 
@@ -150,5 +180,12 @@ function saveSettings() {
 
   emit('updateUser', { ...settings.value })
   alert('✅ Settings saved successfully!')
+}
+
+// Logout function
+function logout() {
+  alert('🔒 Logged out successfully!')
+  // هنا ممكن إعادة التوجيه للصفحة الرئيسية أو صفحة تسجيل الدخول
+   window.location.href = '/register'
 }
 </script>

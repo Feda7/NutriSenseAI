@@ -114,6 +114,10 @@
 
           <div class="space-y-2">
             <label class="flex items-center space-x-3">
+              <input type="checkbox" value="No Condition" v-model="localData.medical" />
+              <span>No Condition</span>
+            </label>
+            <label class="flex items-center space-x-3">
               <input type="checkbox" value="Hypertension" v-model="localData.medical" />
               <span>Hypertension</span>
             </label>
