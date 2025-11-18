@@ -1,23 +1,17 @@
 <template>
   <div class="bg-white shadow-md rounded-2xl p-6 mx-auto">
-    <!-- Header -->
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-semibold text-green-600">Profile</h2>
-
-      <!-- زر Edit / Save -->
       <button
         type="button"
         @click="toggleEdit"
         :disabled="editing && !isFormValid"
-        class="text-green-600 font-medium transition
-               hover:text-green-700
-               disabled:opacity-40 disabled:cursor-not-allowed"
+        class="text-green-600 font-medium transition hover:text-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {{ editing ? 'Save ' : 'Edit Profile ' }}
       </button>
     </div>
 
-    <!-- Profile Photo -->
     <div class="flex items-center gap-4 mb-6">
       <img
         :src="localUser.photo"
@@ -42,7 +36,6 @@
       </div>
     </div>
 
-    <!-- Profile Info -->
     <div class="space-y-3 text-gray-700 mb-6">
       <div>
         <label class="font-medium text-gray-800">Name:</label>
@@ -84,7 +77,6 @@
       </div>
     </div>
 
-    <!-- About Section -->
     <div class="border-t pt-4 space-y-3">
       <h3 class="text-lg font-semibold text-gray-800">About Me</h3>
       <textarea
@@ -115,17 +107,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 
-// استقبال بيانات المستخدم من الصفحة الرئيسية
 const props = defineProps(['user'])
 const emit = defineEmits(['updateUser'])
 
-// نسخة محلية للتعديل
 const localUser = ref({ ...props.user })
-
-// وضع التعديل
 const editing = ref(false)
 
-// تحقق الحقول كاملة
 const isFormValid = computed(() => {
   const u = localUser.value
   return (
@@ -140,32 +127,25 @@ const isFormValid = computed(() => {
   )
 })
 
-// زر Edit / Save
 function toggleEdit() {
   if (editing.value) {
-    // منع الحفظ إذا في حقل فاضي
     if (!isFormValid.value) {
       alert('⚠ Please fill all fields before saving.')
       return
     }
-
     emit('updateUser', localUser.value)
     alert('✅ Profile updated successfully!')
   }
-
   editing.value = !editing.value
 }
 
-// فتح اختيار الصورة
 function choosePhoto() {
   document.getElementById('photoInput').click()
 }
 
-// تحميل صورة جديدة
 function handlePhoto(e) {
   const file = e.target.files[0]
   if (!file) return
-
   const reader = new FileReader()
   reader.onload = (evt) => {
     localUser.value.photo = evt.target.result
