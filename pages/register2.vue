@@ -1,4 +1,4 @@
- <template>
+<template>
   <div class="min-h-screen bg-gray-50 font-sans py-12 px-4">
     <section class="h-auto py-8 my-10 bg-white shadow-md rounded-2xl max-w-3xl mx-auto">
       <div class="space-y-4 m-10">

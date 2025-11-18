@@ -109,36 +109,61 @@
         </div>
 
         <!-- Medical Conditions -->
-        <div>
-          <label class="block text-gray-700 mb-1">Health Conditions</label>
+<div>
+  <label class="block text-gray-700 mb-1">Health Conditions</label>
 
-          <div class="space-y-2">
-            <label class="flex items-center space-x-3">
-              <input type="checkbox" value="No Condition" v-model="localData.medical" />
-              <span>No Condition</span>
-            </label>
-            <label class="flex items-center space-x-3">
-              <input type="checkbox" value="Hypertension" v-model="localData.medical" />
-              <span>Hypertension</span>
-            </label>
-            <label class="flex items-center space-x-3">
-              <input type="checkbox" value="Diabetes" v-model="localData.medical" />
-              <span>Diabetes</span>
-            </label>
-            <label class="flex items-center space-x-3">
-              <input type="checkbox" value="Colon" v-model="localData.medical" />
-              <span>Colon</span>
-            </label>
-            <label class="flex items-center space-x-3">
-              <input type="checkbox" value="Cholesterol" v-model="localData.medical" />
-              <span>Cholesterol</span>
-            </label>
-          </div>
-        </div>
+  <div class="space-y-2">
+    <label class="flex items-center space-x-3">
+      <input 
+        type="checkbox" 
+        value="None" 
+        :checked="localData.medical.includes('None')" 
+        @change="toggleMedical('None', $event)" 
+      />
+      <span>No Condition</span>
+    </label>
+    <label class="flex items-center space-x-3">
+      <input 
+        type="checkbox" 
+        value="Hypertension" 
+        :checked="localData.medical.includes('Hypertension')" 
+        @change="toggleMedical('Hypertension', $event)" 
+      />
+      <span>Hypertension</span>
+    </label>
+    <label class="flex items-center space-x-3">
+      <input 
+        type="checkbox" 
+        value="Diabetes" 
+        :checked="localData.medical.includes('Diabetes')" 
+        @change="toggleMedical('Diabetes', $event)" 
+      />
+      <span>Diabetes</span>
+    </label>
+    <label class="flex items-center space-x-3">
+      <input 
+        type="checkbox" 
+        value="Colon" 
+        :checked="localData.medical.includes('Colon')" 
+        @change="toggleMedical('Colon', $event)" 
+      />
+      <span>Colon</span>
+    </label>
+    <label class="flex items-center space-x-3">
+      <input 
+        type="checkbox" 
+        value="Cholesterol" 
+        :checked="localData.medical.includes('Cholesterol')" 
+        @change="toggleMedical('Cholesterol', $event)" 
+      />
+      <span>Cholesterol</span>
+    </label>
+  </div>
+</div>
 
         <!-- Diet -->
         <div>
-          <label class="block text-gray-700 mb-1">Diet Type</label>
+          <label class="block text-gray-700 mb-1">Diet Type (Optional)</label>
           <select
             v-model="localData.diet"
             class="w-full border rounded-lg px-4 py-2"
@@ -242,6 +267,28 @@ watch(
   }
 )
 
+function toggleMedical(value, event) {
+  if (value === 'None') {
+    if (event.target.checked) {
+      // إذا اخترنا "No Condition"، نمسح باقي القيم
+      localData.value.medical = ['None']
+    } else {
+      // إذا أزلنا "No Condition"، نصفر الاختيارات
+      localData.value.medical = []
+    }
+  } else {
+    // إذا اخترنا أي حالة أخرى
+    if (event.target.checked) {
+      // أضفها للقائمة، واحذف "None" إذا موجودة
+      localData.value.medical = localData.value.medical.filter(v => v !== 'None')
+      localData.value.medical.push(value)
+    } else {
+      // إزالة الحالة
+      localData.value.medical = localData.value.medical.filter(v => v !== value)
+    }
+  }
+}
+
 // تحديث البيانات للأب
 watch(localData, () => (modelValue.value = localData.value))
 
@@ -256,7 +303,6 @@ const isFormValid = computed(() => {
     localData.value.height &&
     localData.value.activity &&
     localData.value.medical.length > 0 &&
-    localData.value.diet &&
     localData.value.goal &&
     localData.value.targetWeight &&
     localData.value.joinDate
