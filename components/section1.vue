@@ -23,8 +23,9 @@
             </div>
 
             <!-- Hero Image -->
-            <div class="lg:w-1/2 mb-10 lg:mb-0 flex justify-center">
-            <img src="https://via.placeholder.com/500x400.png?text=NutriSenseAI" alt="NutriSenseAI Hero" class="rounded-2xl shadow-lg" />
+            <div class=" mb-10 lg:mb-0 flex justify-center">
+            <img src="/public/images/NutriSenseAI.png
+            " alt="NutriSenseAI Hero" class="rounded-2xl  w-[500px]" />
             </div>
         </div>
         </section>

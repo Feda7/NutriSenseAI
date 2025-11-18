@@ -5,6 +5,7 @@
         mealName="breakfast"
         :items="meals.breakfast"
         :dietType="dietType"
+        :diseases="diseases"
         @addFood="addFood"
         @uploadImage="uploadImage"
         />
@@ -14,6 +15,7 @@
         mealName="lunch"
         :items="meals.lunch"
         :dietType="dietType"
+        :diseases="diseases"
         @addFood="addFood"
         @uploadImage="uploadImage"
         />
@@ -23,6 +25,7 @@
         mealName="dinner"
         :items="meals.dinner"
         :dietType="dietType"
+        :diseases="diseases"
         @addFood="addFood"
         @uploadImage="uploadImage"
         />
@@ -32,6 +35,7 @@
         mealName="snacks"
         :items="meals.snacks"
         :dietType="dietType"
+        :diseases="diseases"
         @addFood="addFood"
         @uploadImage="uploadImage"
         />
