@@ -19,7 +19,7 @@
                 <ul class="hidden md:flex md:gap-8 text-white font-medium ">
                 <li></li>
                     <li class="hover:text-lg hover:text-gray-600">
-                        <NuxtLink to="/">Home</NuxtLink>
+                        <NuxtLink to="/home">Home</NuxtLink>
                         <!-- <a href="#" @click.prevent="handleNav('/')">Home</a> -->
                     </li>
                     <li class="hover:text-lg hover:text-gray-600">

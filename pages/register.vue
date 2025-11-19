@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 font-sans py-12 px-4">
-    <section class="h-auto py-8 my-10 bg-white shadow-md rounded-2xl md:first-line:max-w-3xl mx-auto">
+    <section class="h-auto py-8 my-10 bg-white shadow-md rounded-2xl md:first-line max-w-3xl mx-auto">
       <div class="space-y-4 m-10">
         
         <h2 class="text-2xl font-semibold text-green-600 mb-16">Login to Your Account</h2>
@@ -83,4 +83,6 @@ watch(localData, () => (modelValue.value = localData.value))
 const isFormValid = computed(() => {
   return localData.value.email && localData.value.password
 })
+
+
 </script>

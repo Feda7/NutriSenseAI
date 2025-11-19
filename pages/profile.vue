@@ -34,4 +34,6 @@ const user = ref({
 function updateUser(updated) {
   user.value = { ...user.value, ...updated }
 }
+
+
 </script>

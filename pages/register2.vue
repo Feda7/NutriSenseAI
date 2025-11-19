@@ -74,4 +74,6 @@ watch(localData, () => (modelValue.value = localData.value))
 const isFormValid = computed(() => {
   return localData.value.email && localData.value.password
 })
+
+
 </script>
