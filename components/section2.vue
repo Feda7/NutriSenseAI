@@ -1,6 +1,6 @@
 <template>
      <!-- Features Section -->
-    <section class=" mx-auto px-20 pt-20 pb-10">
+    <section class=" mx-auto px-10 md:px-20 pt-20 pb-10">
       <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">Why Choose NutriSenseAI?</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         <div class="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all">

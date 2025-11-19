@@ -12,11 +12,11 @@
       </button>
     </div>
 
-    <div class="flex items-center gap-4 mb-6">
+    <div class="flex items-center gap-4 mb-6 ml-10 md:ml-0">
       <img
         :src="localUser.photo"
         alt="Profile photo"
-        class="w-56 h-56 rounded-full border object-cover"
+        class="w-56 h-56 rounded-full border object-cover "
       />
       <div>
         <input

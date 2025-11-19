@@ -1,5 +1,5 @@
 <template>
-    <section class="max-full bg-gray-50 px-56">
+    <section class="max-full bg-gray-50 md:px-56">
     <div class="min-h-screen  px-6 py-10">
     
     <!-- Daily Summary Section -->
@@ -28,6 +28,8 @@
 const userCalories = ref(1900)
 const consumed = ref(650)
 const remaining = ref(userCalories.value - consumed.value)
+const foodData = useState("foodData");
+
 
 /* MEALS DATA */
 const meals = ref({
