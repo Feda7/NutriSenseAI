@@ -1,13 +1,9 @@
 <template>
   <div class="min-h-screen bg-gray-50 pb-20">
-
-    
-
-
     <!-- Suggested Meals Section -->
-    <section class="px-20 mt-10">
-      <h2 class="text-2xl font-bold text-green-700 mb-6">Suggested Meals</h2>
-
+    <section class="px-20">
+      <h2 class="text-2xl font-bold text-green-700 mb-6 pt-10">Suggested Meals</h2>
+      <p class="text-lg text-green-700 mb-10">Here are today’s suggested meals tailored for a healthier life.</p>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 
         <div 
