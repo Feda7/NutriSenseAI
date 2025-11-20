@@ -39,25 +39,13 @@
         ></button>
       </div>
 
-      <!-- Desired Weight -->
+      <!-- Daily Calorie Goal -->
       <div>
-        <label class="block text-gray-600 mb-1">Desired Weight</label>
-        <input
-          v-model="settings.targetWeight"
-          type="number"
-          class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
-          placeholder="Enter your target weight"
-        />
-      </div>
-
-      <!-- Daily Calorie Goal (Optional) -->
-      <div>
-        <label class="block text-gray-600 mb-1">Daily Calorie Goal (Optional)</label>
+        <label class="block text-gray-600 mb-1">Daily Calorie Goal</label>
         <input
           v-model="settings.goal"
           type="number"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
-          placeholder="Optional"
         />
       </div>
 
@@ -75,14 +63,14 @@
         </select>
       </div>
 
-      <!-- Diet (Optional) -->
+      <!-- Preferred Diet -->
       <div>
-        <label class="block text-gray-600 mb-1">Preferred Diet (Optional)</label>
+        <label class="block text-gray-600 mb-1">Preferred Diet</label>
         <select
           v-model="settings.diet"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
         >
-          <option value="">Select Diet Type </option>
+          <option value="">Select Diet Type</option>
           <option value="Bland">Bland Diet</option>
           <option value="High-Protein">High-Protein</option> 
           <option value="High-Fiber">High-Fiber</option> 
@@ -91,77 +79,59 @@
         </select>
       </div>
 
-      <!-- Health Condition (CHECKBOXES) -->
+      <!-- Health Condition (Multi-select) -->
       <div>
-        <label class="block text-gray-600 mb-2">Health Conditions</label>
-
+        <label class="block text-gray-600 mb-1">Health Condition</label>
         <div class="space-y-2">
-
-          <!-- No Disease Checkbox -->
-          <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              value="None"
-              v-model="settings.health"
-              @change="handleNoDisease"
-            />
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="No Condition" v-model="settings.health" />
             <span>No Condition</span>
           </label>
-
-          <!-- Other Diseases -->
-          <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              value="Hypertension"
-              v-model="settings.health"
-              @change="removeNoDisease"
-            />
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="Hypertension" v-model="settings.health" />
             <span>Hypertension</span>
           </label>
-
-          <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              value="Diabetes"
-              v-model="settings.health"
-              @change="removeNoDisease"
-            />
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="Diabetes" v-model="settings.health" />
             <span>Diabetes</span>
           </label>
-
-          <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              value="Colon"
-              v-model="settings.health"
-              @change="removeNoDisease"
-            />
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="Colon" v-model="settings.health" />
             <span>Colon</span>
           </label>
-
-          <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              value="Cholesterol"
-              v-model="settings.health"
-              @change="removeNoDisease"
-            />
+          <label class="flex items-center space-x-3">
+            <input type="checkbox" value="Cholesterol" v-model="settings.health" />
             <span>Cholesterol</span>
           </label>
-
         </div>
       </div>
 
-      <!-- Save Button -->
-      <button
-        type="submit"
-        :disabled="!isFormValid"
-        class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
-              hover:bg-green-700 transition-all
-              disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Save Changes
-      </button>
+      <!-- Buttons -->
+      <div class="flex space-x-4">
+        <!-- Save Button -->
+        <button
+          type="submit"
+          :disabled="!isFormValid"
+          class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
+                 hover:bg-green-700 transition-all
+                 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Save Changes
+        </button>
+
+        <!-- Logout Button -->
+         <NuxtLink to="/register">
+        <button
+          type="button"
+          @click="logout"
+          class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
+                 hover:bg-green-700 transition-all"
+        >
+          Logout
+        </button>
+         </NuxtLink>
+        
+      </div>
     </form>
   </div>
 </template>
@@ -172,6 +142,7 @@ import { ref, computed } from 'vue'
 const props = defineProps(['user'])
 const emit = defineEmits(['updateUser'])
 
+// Local settings model
 const settings = ref({
   birthdate: props.user.birthdate || '',
   email: props.user.email || '',
@@ -179,41 +150,40 @@ const settings = ref({
   goal: props.user.goal || '',
   activity: props.user.activity || '',
   diet: props.user.diet || '',
-  targetWeight: props.user.targetWeight || '',
-  health: Array.isArray(props.user.health) ? props.user.health : []
+  health: props.user.health ? [...props.user.health] : []  // متعدد
 })
 
+// Password visibility
 const showPassword = ref(false)
 function togglePassword() {
   showPassword.value = !showPassword.value
 }
 
+// 🔥 Check if all fields are filled
 const isFormValid = computed(() => {
   return (
     settings.value.birthdate &&
     settings.value.email &&
     settings.value.password &&
+    settings.value.goal &&
     settings.value.activity &&
-    settings.value.targetWeight
+    settings.value.diet &&
+    settings.value.health.length > 0
   )
 })
 
-// When selecting "No Disease", remove all others
-function handleNoDisease() {
-  if (settings.value.health.includes("None")) {
-    settings.value.health = ["None"]
-  }
-}
-
-// If selecting other diseases, remove "None"
-function removeNoDisease() {
-  settings.value.health = settings.value.health.filter(h => h !== "None")
-}
-
+// Save changes
 function saveSettings() {
   if (!isFormValid.value) return
 
   emit('updateUser', { ...settings.value })
   alert('✅ Settings saved successfully!')
+}
+
+// Logout function
+function logout() {
+  alert('🔒 Logged out successfully!')
+  // هنا ممكن إعادة التوجيه للصفحة الرئيسية أو صفحة تسجيل الدخول
+  // مثال: window.location.href = '/login'
 }
 </script>
