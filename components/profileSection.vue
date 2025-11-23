@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <div class="flex items-center gap-4 mb-6 ml-10 md:ml-0">
+    <div class="flex items-center gap-4 mb-6 ml-8 md:ml-0">
       <img
         :src="localUser.photo"
         alt="Profile photo"
