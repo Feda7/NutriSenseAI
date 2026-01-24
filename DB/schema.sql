@@ -76,7 +76,7 @@ CREATE TABLE Meal (
     MealTime TIME NOT NULL,
     Date DATETIME NOT NULL,
     TotalCalories FLOAT NOT NULL,
-    Details TEXT NOT NULL
+    Details TEXT NOT NULL,
     FOREIGN KEY (UserID) REFERENCES User(UserID)
 );
 
@@ -99,7 +99,7 @@ CREATE TABLE Image (
     MealID INT NOT NULL,
     UploadTime DATETIME NOT NULL,
     AnalysisResult TEXT NOT NULL,
-    ModelID INT NOT NULL
+    ModelID INT NOT NULL,
     FOREIGN KEY (MealID) REFERENCES Meal(MealID)
 );
 
