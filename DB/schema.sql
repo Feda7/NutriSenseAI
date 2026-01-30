@@ -35,26 +35,27 @@ CREATE TABLE Diseases (
 
 CREATE TABLE ServingUnit (
     UnitID INT PRIMARY KEY AUTO_INCREMENT,
-    Name VARCHAR(50),
-    ToGramFact FLOAT
+    Name VARCHAR(100) NOT NULL,
+    ShortCode VARCHAR(50) NOT NULL,
+    ToGramFact FLOAT NOT NULL
 );
 
 CREATE TABLE User (
     UserID INT PRIMARY KEY AUTO_INCREMENT,
     FirstName VARCHAR(50) NOT NULL,
     LastName VARCHAR(50) NOT NULL,
-    Email VARCHAR(100) UNIQUE NOT NULL,
-    Password VARCHAR(255) NOT NULL,
+    Email VARCHAR(255) NOT NULL UNIQUE,
+    Password VARCHAR(128) NOT NULL,
     BirthDate DATE NOT NULL,
     Gender VARCHAR(10) NOT NULL,
     Height FLOAT NOT NULL,
     CurrentWeight FLOAT NOT NULL,
     DesiredWeight FLOAT NOT NULL,
-    DailyCalories FLOAT,
-    JoinDate DATE NOT NULL,
+    DailyCalories FLOAT NOT NULL,
+    JoinDate DATETIME NOT NULL,
     ActiveLevelID INT NOT NULL,
     GoalID INT NOT NULL,
-    FOREIGN KEY (ActiveLevelID) REFERENCES Active(ActiveLevelID),
+    FOREIGN KEY (ActiveLevelID) REFERENCES ActiveLevel(ActiveLevelID),
     FOREIGN KEY (GoalID) REFERENCES Goal(GoalID)
 );
 
@@ -185,4 +186,11 @@ CREATE TABLE DietRuleFoodItem (
     PRIMARY KEY (RuleID, FoodItemID),
     FOREIGN KEY (RuleID) REFERENCES DietRule(RuleID),
     FOREIGN KEY (FoodItemID) REFERENCES FoodItem(FoodItemID)
+);
+CREATE TABLE FoodItemTag (
+    FoodItemID INT NOT NULL,
+    TagID INT NOT NULL,
+    PRIMARY KEY (FoodItemID, TagID),
+    FOREIGN KEY (FoodItemID) REFERENCES FoodItem(FoodItemID),
+    FOREIGN KEY (TagID) REFERENCES Tag(TagID)
 );
