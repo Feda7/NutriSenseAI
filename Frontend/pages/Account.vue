@@ -308,4 +308,34 @@ const isFormValid = computed(() => {
     localData.value.joinDate
   )
 })
+
+const { $api } = useNuxtApp();
+
+const register2 = useState('register2');
+
+const formData = reactive({
+  FirstName: '',
+  LastName: '',
+  BirthDate: '',
+  Gender: '',
+  Height: '',
+  CurrentWeight: '',
+  DesiredWeight: '',
+  ActiveLevelID: '',
+  GoalID: ''
+});
+const submitForm = async () => {
+  const fullData = {
+    ...register2.value,
+    ...formData
+  };
+
+  try {
+    const res = await $api.post('/register2', fullData);
+    alert(res.data.message);
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+  }
+};
+
 </script>

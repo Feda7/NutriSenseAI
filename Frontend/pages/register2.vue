@@ -75,5 +75,15 @@ const isFormValid = computed(() => {
   return localData.value.email && localData.value.password
 })
 
+const router = useRouter();
 
+// نخزن البيانات مؤقتًا
+const register2 = useState('register2', () => ({
+  Email: '',
+  Password: ''
+}));
+
+const nextStep = () => {
+  router.push('/Account');
+};
 </script>
