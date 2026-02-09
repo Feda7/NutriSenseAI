@@ -105,14 +105,23 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps(['user'])
 const emit = defineEmits(['updateUser'])
 
-const localUser = ref({ ...props.user })
+const localUser = ref({})
 const editing = ref(false)
 
+watch(
+  () => props.user,
+  (newUser) => {
+    if (newUser) {
+      localUser.value = { ...newUser }
+    }
+  },
+  { immediate: true }
+)
 const isFormValid = computed(() => {
   const u = localUser.value
   return (

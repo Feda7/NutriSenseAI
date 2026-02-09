@@ -24,6 +24,7 @@ function insertUser(user) {
     (FirstName, LastName, Email, Password, BirthDate, Gender, Height, CurrentWeight, DesiredWeight, ActiveLevelID, GoalID, JoinDate)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
   `;
+console.log('📥 Data received for insertUser:', user)
 
   return new Promise((resolve, reject) => {
     db.query(

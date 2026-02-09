@@ -137,21 +137,28 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps(['user'])
 const emit = defineEmits(['updateUser'])
 
-// Local settings model
-const settings = ref({
-  birthdate: props.user.birthdate || '',
-  email: props.user.email || '',
-  password: props.user.password || '',
-  goal: props.user.goal || '',
-  activity: props.user.activity || '',
-  diet: props.user.diet || '',
-  health: props.user.health ? [...props.user.health] : []  // متعدد
-})
+watch(
+  () => props.user,
+  (newUser) => {
+    if (!newUser) return
+
+    settings.value = {
+      birthdate: newUser.birthdate || '',
+      email: newUser.email || '',
+      password: '',
+      goal: newUser.goal || '',
+      activity: newUser.activity || '',
+      diet: newUser.diet || '',
+      health: newUser.health || []
+    }
+  },
+  { immediate: true }
+)
 
 // Password visibility
 const showPassword = ref(false)

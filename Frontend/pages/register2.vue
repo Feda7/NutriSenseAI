@@ -32,7 +32,6 @@
             @click="showPassword = !showPassword"
             class="absolute right-3 top-9 text-gray-500"
           >
-            👁
           </button>
         </div>
 

@@ -331,32 +331,28 @@ const submitForm = async () => {
   }
 
   const fullData = {
-    Email: register2.value.Email,
-    Password: register2.value.Password,
-
-    FirstName: localData.value.firstName,
-    LastName: localData.value.lastName,
-    BirthDate: localData.value.birthDate,
-    Gender: localData.value.gender,
-    Height: localData.value.height,
-    CurrentWeight: localData.value.currentWeight,
-    DesiredWeight: localData.value.targetWeight,
-
-    ActiveLevelID: activityMap[localData.value.activity],
-    GoalID: goalMap[localData.value.goal],
-
-    MedicalConditions: localData.value.medical,
-    DietType: localData.value.diet,
-    JoinDate: localData.value.joinDate
-  }
+  Email: register2.value.Email,
+  Password: register2.value.Password,
+  FirstName: localData.value.firstName,
+  LastName: localData.value.lastName,
+  BirthDate: localData.value.birthDate,
+  Gender: localData.value.gender,
+  Height: localData.value.height,
+  CurrentWeight: localData.value.currentWeight,
+  DesiredWeight: localData.value.targetWeight,
+  ActiveLevelID: activityMap[localData.value.activity],
+  GoalID: goalMap[localData.value.goal]
+}
 
   console.log('📤 SENDING TO BACKEND:', fullData)
 
   try {
-    await $fetch('http://localhost:3001/api/user', {
+    const res = await $fetch('http://localhost:3001/api/user', {
       method: 'POST',
       body: fullData
-    })
+})
+
+localStorage.setItem('userId', res.userId)
 
     router.push('/profile')
   } catch (err) {
