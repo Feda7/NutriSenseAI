@@ -213,14 +213,16 @@
             </button>
           </NuxtLink>
 
-          <NuxtLink :to="isFormValid ? '/profile' : ''">
-            <button
-              class="mt-14 bg-green-600 text-white px-10 py-2 rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="!isFormValid"
-            >
-              Done
-            </button>
-          </NuxtLink>
+          <button
+            @click="submitForm"
+            type="button"
+            class="mt-14 bg-green-600 text-white px-10 py-2 rounded-xl"
+          >
+            Done
+          </button>
+
+
+
 
         </div>
 
@@ -232,24 +234,40 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 
-const modelValue = defineModel()
+/* =========================
+    Router
+========================= */
+const router = useRouter()
 
-// 🔥 تاريخ اليوم تلقائي
+/* =========================
+    Base data
+========================= */
 const todayDate = new Date().toISOString().split("T")[0]
 
 const localData = ref({
-  ...modelValue.value,
-  medical: modelValue.value?.medical || [],
+  firstName: '',
+  lastName: '',
+  birthDate: '',
+  age: '',
+  gender: '',
+  currentWeight: '',
+  targetWeight: '',
+  height: '',
+  activity: '',
+  medical: [],
+  diet: '',
   joinDate: todayDate,
-  age: modelValue.value?.age || ""
+  goal: ''
 })
 
-// 🔥 حساب العمر تلقائياً
+/* =========================
+    Age calculation
+========================= */
 watch(
   () => localData.value.birthDate,
   (newBirthDate) => {
     if (!newBirthDate) {
-      localData.value.age = ""
+      localData.value.age = ''
       return
     }
 
@@ -267,75 +285,82 @@ watch(
   }
 )
 
+/* =========================
+    Medical logic (كما هو)
+========================= */
 function toggleMedical(value, event) {
   if (value === 'None') {
-    if (event.target.checked) {
-      // إذا اخترنا "No Condition"، نمسح باقي القيم
-      localData.value.medical = ['None']
-    } else {
-      // إذا أزلنا "No Condition"، نصفر الاختيارات
-      localData.value.medical = []
-    }
+    localData.value.medical = event.target.checked ? ['None'] : []
   } else {
-    // إذا اخترنا أي حالة أخرى
     if (event.target.checked) {
-      // أضفها للقائمة، واحذف "None" إذا موجودة
       localData.value.medical = localData.value.medical.filter(v => v !== 'None')
       localData.value.medical.push(value)
     } else {
-      // إزالة الحالة
       localData.value.medical = localData.value.medical.filter(v => v !== value)
     }
   }
 }
 
-// تحديث البيانات للأب
-watch(localData, () => (modelValue.value = localData.value))
+/* =========================
+    Shared state (Email + Password)
+========================= */
+const register2 = useState('register2')
 
-const isFormValid = computed(() => {
-  return (
-    localData.value.firstName &&
-    localData.value.lastName &&
-    localData.value.birthDate &&
-    localData.value.age &&
-    localData.value.gender &&
-    localData.value.currentWeight &&
-    localData.value.height &&
-    localData.value.activity &&
-    localData.value.medical.length > 0 &&
-    localData.value.goal &&
-    localData.value.targetWeight &&
-    localData.value.joinDate
-  )
-})
+/* =========================
+    Mapping
+========================= */
+const activityMap = {
+  Low: 1,
+  Moderate: 2,
+  High: 3
+}
 
-const { $api } = useNuxtApp();
+const goalMap = {
+  'Lose Weight': 1,
+  'Gain Weight': 2,
+  'Maintain Weight': 3
+}
 
-const register2 = useState('register2');
-
-const formData = reactive({
-  FirstName: '',
-  LastName: '',
-  BirthDate: '',
-  Gender: '',
-  Height: '',
-  CurrentWeight: '',
-  DesiredWeight: '',
-  ActiveLevelID: '',
-  GoalID: ''
-});
+/* =========================
+    Submit (FINAL & SAFE ✅)
+========================= */
 const submitForm = async () => {
+  if (!register2.value?.Email || !register2.value?.Password) {
+    console.error('❌ Email أو Password مفقود')
+    return
+  }
+
   const fullData = {
-    ...register2.value,
-    ...formData
-  };
+    Email: register2.value.Email,
+    Password: register2.value.Password,
+
+    FirstName: localData.value.firstName,
+    LastName: localData.value.lastName,
+    BirthDate: localData.value.birthDate,
+    Gender: localData.value.gender,
+    Height: localData.value.height,
+    CurrentWeight: localData.value.currentWeight,
+    DesiredWeight: localData.value.targetWeight,
+
+    ActiveLevelID: activityMap[localData.value.activity],
+    GoalID: goalMap[localData.value.goal],
+
+    MedicalConditions: localData.value.medical,
+    DietType: localData.value.diet,
+    JoinDate: localData.value.joinDate
+  }
+
+  console.log('📤 SENDING TO BACKEND:', fullData)
 
   try {
-    const res = await $api.post('/register2', fullData);
-    alert(res.data.message);
-  } catch (err) {
-    console.error(err.response?.data || err.message);
-  }
-};
+    await $fetch('http://localhost:3001/api/user', {
+      method: 'POST',
+      body: fullData
+    })
 
+    router.push('/profile')
+  } catch (err) {
+    console.error('❌ API ERROR:', err)
+  }
+}
 </script>

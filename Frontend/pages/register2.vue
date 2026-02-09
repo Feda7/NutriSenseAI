@@ -3,7 +3,9 @@
     <section class="h-auto py-8 my-10 bg-white shadow-md rounded-2xl max-w-3xl mx-auto">
       <div class="space-y-4 m-10">
         
-        <h2 class="text-2xl font-semibold text-green-600 mb-16">Create Your Account</h2>
+        <h2 class="text-2xl font-semibold text-green-600 mb-16">
+          Create Your Account
+        </h2>
 
         <!-- Email -->
         <div>
@@ -29,13 +31,13 @@
             type="button"
             @click="showPassword = !showPassword"
             class="absolute right-3 top-9 text-gray-500"
-          ></button>
+          >
+            👁
+          </button>
         </div>
 
         <!-- Buttons -->
         <div class="flex items-center justify-center space-x-6">
-
-          <!-- Create Account -->
           <NuxtLink to="/register">
             <button
               class="mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50"
@@ -44,16 +46,13 @@
             </button>
           </NuxtLink>
 
-          <!-- Login -->
-          <NuxtLink :to="isFormValid ? '/Account' : ''">
-            <button
-              class="mt-14 bg-green-600 text-white px-10 py-2 rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="!isFormValid"
-            >
-             Next
-            </button>
-          </NuxtLink>
-
+          <button
+            class="mt-14 bg-green-600 text-white px-10 py-2 rounded-xl disabled:opacity-40"
+            :disabled="!isFormValid"
+            @click="goNext"
+          >
+            Next
+          </button>
         </div>
 
       </div>
@@ -62,28 +61,33 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 
-const modelValue = defineModel()
-const localData = ref({ ...modelValue.value })
-
+const router = useRouter()
 const showPassword = ref(false)
 
-watch(localData, () => (modelValue.value = localData.value))
+// بيانات الصفحة
+const localData = ref({
+  email: '',
+  password: ''
+})
+
+// state مشتركة بين الصفحات
+const register2 = useState('register2', () => ({
+  Email: '',
+  Password: ''
+}))
 
 const isFormValid = computed(() => {
   return localData.value.email && localData.value.password
 })
 
-const router = useRouter();
+const goNext = () => {
+  register2.value.Email = localData.value.email
+  register2.value.Password = localData.value.password
 
-// نخزن البيانات مؤقتًا
-const register2 = useState('register2', () => ({
-  Email: '',
-  Password: ''
-}));
+  console.log('REGISTER2 SAVED 👉', register2.value)
 
-const nextStep = () => {
-  router.push('/Account');
-};
+  router.push('/Account')
+}
 </script>

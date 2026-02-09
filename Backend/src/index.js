@@ -11,29 +11,49 @@ app.use(express.json());
 
 // Test route
 app.get('/', (req, res) => {
-  res.send('✅ NutriSense AI Backend is running');
+  res.send('API is running');
 });
 
-// Express route
+// Create user
 app.post('/api/user', async (req, res) => {
-  const { Name, Password, Email, FirstName, LastName, BirthDate, Gender, Height, CurrentWeight,  DesiredWeight, ActiveLevelID, GoalID} = req.body;
-  // هنا تحفظي البيانات في الداتابيس
-  await db.insertUser({ Name, Password, Email, FirstName, LastName, BirthDate, Gender, Height, CurrentWeight,  DesiredWeight, ActiveLevelID, GoalID });
-  res.status(201).json({ message: 'User created successfully' });
-});
+  const {
+    Email,
+    Password,
+    FirstName,
+    LastName,
+    BirthDate,
+    Gender,
+    Height,
+    CurrentWeight,
+    DesiredWeight,
+    ActiveLevelID,
+    GoalID
+  } = req.body;
 
-  db.query(sql, [UserID, Date, TotalCalories, Details, MealTime], (err, result) => {
-    if (err) {
-      console.error('❌ SQL Error:', err);
-      res.status(500).json({ error: 'Database error', details: err });
-    } else {
-      res.status(200).json({ message: '✅ Meal added successfully', mealId: result.insertId });
-    }
-  });
+  try {
+    await db.insertUser({
+      Email,
+      Password,
+      FirstName,
+      LastName,
+      BirthDate,
+      Gender,
+      Height,
+      CurrentWeight,
+      DesiredWeight,
+      ActiveLevelID,
+      GoalID
+    });
+
+    res.status(201).json({ message: 'User created successfully' });
+  } catch (err) {
+    console.error('❌ Error inserting user:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Server
-const PORT = 3000;
+const PORT = 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });
