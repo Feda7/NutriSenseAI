@@ -347,7 +347,7 @@ const submitForm = async () => {
   console.log('📤 SENDING TO BACKEND:', fullData)
 
   try {
-    const res = await $fetch('http://localhost:3001/api/user', {
+    const res = await $fetch('http://localhost:5000/api/user', {
       method: 'POST',
       body: fullData
 })

@@ -31,7 +31,7 @@ onMounted(async () => {
 
   try {
     const dbUser = await $fetch(
-      `http://localhost:3001/api/user/${userId}`
+      `http://localhost:5000/api/user/${userId}`
     )
     user.value = {
       name: `${dbUser.FirstName} ${dbUser.LastName}`,

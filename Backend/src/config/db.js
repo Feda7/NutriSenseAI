@@ -50,4 +50,19 @@ console.log('📥 Data received for insertUser:', user)
   });
 }
 
-module.exports = { db, insertUser };
+// دالة للتحقق من بيانات المستخدم (تسجيل الدخول)
+function findUserByCredentials(email, password) {
+  // لاحظ استخدام مسميات الأعمدة كما هي في قاعدة بياناتك (Email, Password)
+  const sql = "SELECT * FROM `user` WHERE Email = ? AND Password = ?";
+  return new Promise((resolve, reject) => {
+    db.query(sql, [email, password], (err, results) => {
+      if (err) {
+        return reject(err);
+      }
+      // إرجاع النتيجة الأولى فقط أو null إذا لم يجد شيئاً
+      resolve(results.length > 0 ? results[0] : null);
+    });
+  });
+}
+
+module.exports = { db, insertUser, findUserByCredentials };

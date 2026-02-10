@@ -35,54 +35,82 @@
 
         
           <!-- Buttons -->
-          <div class=" md:flex items-center justify-center md:space-x-6 ">
-              <NuxtLink to="/SectionWelcome">
-            <button
-              class="mt-6 md:mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50 "
-            >
-              Back
-            </button>
-          </NuxtLink>
+          <div class="md:flex items-center justify-center md:space-x-6">
+  
+  <NuxtLink to="/SectionWelcome">
+    <button type="button" class="mt-6 md:mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50">
+      Back
+    </button>
+  </NuxtLink>
 
-            <!-- Create Account -->
-            <NuxtLink to="/register2">
-              <button
-                class="block mt-6 md:mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50"
-              >
-                Create Account
-              </button>
-            </NuxtLink>
-            
+  <NuxtLink to="/register2">
+    <button type="button" class="block mt-6 md:mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50">
+      Create Account
+    </button>
+  </NuxtLink>
 
-            <!-- Login -->
-            <NuxtLink :to="isFormValid ? '/food' : ''">
-              <button
-                class="mt-6 md:mt-14 bg-green-600 text-white px-10 py-2 rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                :disabled="!isFormValid"
-              >
-                Login
-              </button>
-            </NuxtLink>
-          </div>
+  <button
+    type="button"
+    @click="handleLogin"
+    class="mt-6 md:mt-14 bg-green-600 text-white px-10 py-2 rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
+    :disabled="!isFormValid"
+  >
+    Login
+  </button>
+</div>
+
+<p v-if="errorMessage" class="text-red-500 text-center mt-4 font-bold">
+  {{ errorMessage }}
+</p>
+          
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const modelValue = defineModel()
-const localData = ref({ ...modelValue.value })
+const localData = ref({ 
+  email: '', 
+  password: '',
+  ...modelValue?.value 
+})
 
 const showPassword = ref(false)
+const errorMessage = ref('') // لإظهار رسائل الخطأ
 
-watch(localData, () => (modelValue.value = localData.value))
-
-// التحقق من صحة الحقول
 const isFormValid = computed(() => {
   return localData.value.email && localData.value.password
 })
 
+// دالة تسجيل الدخول
+const handleLogin = async () => {
+  errorMessage.value = ''
+  try {
+    const response = await fetch('http://localhost:5000/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: localData.value.email,
+        password: localData.value.password
+      })
+    })
 
+    const result = await response.json()
+
+    if (response.ok) {
+      alert('تم تسجيل الدخول بنجاح!')
+      router.push('/food') // التوجه لصفحة الطعام عند النجاح
+    } else {
+      errorMessage.value = 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+    }
+  } catch (error) {
+    errorMessage.value = 'حدث خطأ في الاتصال بالسيرفر'
+    console.error('Login error:', error)
+  }
+}
 </script>
