@@ -36,28 +36,27 @@
         
           <!-- Buttons -->
           <div class="md:flex items-center justify-center md:space-x-6">
-  
-  <NuxtLink to="/SectionWelcome">
-    <button type="button" class="mt-6 md:mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50">
-      Back
-    </button>
-  </NuxtLink>
+            <NuxtLink to="/SectionWelcome">
+              <button type="button" class="mt-6 md:mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50">
+                Back
+              </button>
+            </NuxtLink>
 
-  <NuxtLink to="/register2">
-    <button type="button" class="block mt-6 md:mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50">
-      Create Account
-    </button>
-  </NuxtLink>
+            <NuxtLink to="/register2">
+              <button type="button" class="block mt-6 md:mt-14 bg-white text-green-600 px-8 py-2 rounded-xl border border-green-600 font-semibold hover:bg-green-50">
+                Create Account
+              </button>
+            </NuxtLink>
 
-  <button
-    type="button"
-    @click="handleLogin"
-    class="mt-6 md:mt-14 bg-green-600 text-white px-10 py-2 rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
-    :disabled="!isFormValid"
-  >
-    Login
-  </button>
-</div>
+            <button
+              type="button"
+              @click="handleLogin"
+              class="mt-6 md:mt-14 bg-green-600 text-white px-10 py-2 rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              :disabled="!isFormValid"
+            >
+              Login
+            </button>
+          </div>
 
 <p v-if="errorMessage" class="text-red-500 text-center mt-4 font-bold">
   {{ errorMessage }}
@@ -103,13 +102,17 @@ const handleLogin = async () => {
     const result = await response.json()
 
     if (response.ok) {
-      alert('تم تسجيل الدخول بنجاح!')
-      router.push('/food') // التوجه لصفحة الطعام عند النجاح
-    } else {
-      errorMessage.value = 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+    // خزن الـ userId في localStorage
+    localStorage.setItem('userId', result.user.id)
+
+    alert('Logged in successfully!')
+    router.push('/food')
+}
+ else {
+      errorMessage.value = 'Email or password is incorrect'
     }
   } catch (error) {
-    errorMessage.value = 'حدث خطأ في الاتصال بالسيرفر'
+    errorMessage.value = 'Error connecting to the server'
     console.error('Login error:', error)
   }
 }

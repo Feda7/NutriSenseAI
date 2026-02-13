@@ -34,6 +34,7 @@ onMounted(async () => {
       `http://localhost:5000/api/user/${userId}`
     )
     user.value = {
+      ...dbUser,
       name: `${dbUser.FirstName} ${dbUser.LastName}`,
       age: calculateAge(dbUser.BirthDate),
       height: dbUser.Height,
@@ -44,10 +45,12 @@ onMounted(async () => {
       reason: '',
       inspiration: '',
       birthdate: dbUser.BirthDate,
-      goal: '',
-      activity: '',
-      diet: '',
-      health: []
+      goal: mapGoal(dbUser.GoalID),
+      activity:  mapActivity(dbUser.ActiveLevelID),
+      diet: dbUser.DietName || '',
+      health: dbUser.MedicalConditions
+        ? dbUser.MedicalConditions.split(',')
+        : []
     }
   } 
   catch (err) {
@@ -60,7 +63,22 @@ function calculateAge(birthDate) {
   const diff = Date.now() - birth.getTime()
   return new Date(diff).getUTCFullYear() - 1970
 }
-
+function mapGoal(id) {
+  const map = {
+    1: 'Weight Loss',
+    2: 'Weight Gain',
+    3: 'Maintain Weight'
+  }
+  return map[id] || ''
+}
+function mapActivity(id) {
+  const map = {
+    1: 'Low',
+    2: 'Moderate',
+    3: 'High'
+  }
+  return map[id] || ''
+}
 // تحديث البيانات محليًا (بعد تعديل البروفايل أو الإعدادات)
 function updateUser(updated) {
   user.value = { ...user.value, ...updated }

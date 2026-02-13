@@ -3,6 +3,7 @@
     <h2 class="text-2xl font-semibold text-green-600 mb-4">Settings</h2>
 
     <form class="space-y-4" @submit.prevent="saveSettings">
+      
       <!-- Birthday -->
       <div>
         <label class="block text-gray-600 mb-1">Birthday</label>
@@ -23,29 +24,33 @@
         />
       </div>
 
-      <!-- Password with show/hide -->
+      <!-- Password -->
       <div class="relative">
         <label class="block text-gray-600 mb-1">Password</label>
         <input
           :type="showPassword ? 'text' : 'password'"
           v-model="settings.password"
           class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 pr-10"
-          placeholder="Enter your password"
+          placeholder="Enter new password"
         />
         <button
           type="button"
           @click="togglePassword"
           class="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
-        ></button>
+        >
+        </button>
       </div>
 
-      <!-- Daily Calorie Goal -->
+      <!-- Daily Calorie Target -->
       <div>
-        <label class="block text-gray-600 mb-1">Daily Calorie Goal</label>
+        <label class="block text-gray-600 mb-1">
+          Daily Calorie Target (Calculated)
+        </label>
         <input
           v-model="settings.goal"
           type="number"
-          class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
+          disabled
+          class="w-full border rounded-lg px-4 py-2 bg-gray-100"
         />
       </div>
 
@@ -66,20 +71,15 @@
       <!-- Preferred Diet -->
       <div>
         <label class="block text-gray-600 mb-1">Preferred Diet</label>
-        <select
+        <input
           v-model="settings.diet"
-          class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
-        >
-          <option value="">Select Diet Type</option>
-          <option value="Bland">Bland Diet</option>
-          <option value="High-Protein">High-Protein</option> 
-          <option value="High-Fiber">High-Fiber</option> 
-          <option value="Low-Saturated Fat">Low-Saturated Fat</option>
-          <option value="DASH">DASH</option>
-        </select>
+          type="text"
+          disabled
+          class="w-full border rounded-lg px-4 py-2 bg-gray-100"
+        />
       </div>
 
-      <!-- Health Condition (Multi-select) -->
+      <!-- Health Condition -->
       <div>
         <label class="block text-gray-600 mb-1">Health Condition</label>
         <div class="space-y-2">
@@ -108,7 +108,6 @@
 
       <!-- Buttons -->
       <div class="flex space-x-4">
-        <!-- Save Button -->
         <button
           type="submit"
           :disabled="!isFormValid"
@@ -119,19 +118,18 @@
           Save Changes
         </button>
 
-        <!-- Logout Button -->
-         <NuxtLink to="/register">
-        <button
-          type="button"
-          @click="logout"
-          class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
-                 hover:bg-green-700 transition-all"
-        >
-          Logout
-        </button>
-         </NuxtLink>
-        
+        <NuxtLink to="/register">
+          <button
+            type="button"
+            @click="logout"
+            class="bg-green-600 text-white font-semibold px-6 py-2 rounded-xl 
+                   hover:bg-green-700 transition-all"
+          >
+            Logout
+          </button>
+        </NuxtLink>
       </div>
+
     </form>
   </div>
 </template>
@@ -142,55 +140,74 @@ import { ref, computed, watch } from 'vue'
 const props = defineProps(['user'])
 const emit = defineEmits(['updateUser'])
 
+const settings = ref({
+  birthdate: '',
+  email: '',
+  password: '',
+  goal: '',
+  activity: '',
+  diet: '',
+  health: []
+})
+
+// ✅ Activity mapping
+function mapActivity(id) {
+  switch (id) {
+    case 1: return 'Low'
+    case 2: return 'Moderate'
+    case 3: return 'High'
+    default: return ''
+  }
+}
+
+// ✅ Correct watch (يربط بيانات الباكند)
 watch(
   () => props.user,
   (newUser) => {
     if (!newUser) return
 
     settings.value = {
-      birthdate: newUser.birthdate || '',
-      email: newUser.email || '',
+      birthdate: newUser.BirthDate
+        ? newUser.BirthDate.split('T')[0]
+        : '',
+
+      email: newUser.Email || '',
+
       password: '',
-      goal: newUser.goal || '',
-      activity: newUser.activity || '',
-      diet: newUser.diet || '',
-      health: newUser.health || []
+
+      goal: newUser.DailyCaloriesTarget || '',
+
+      activity: mapActivity(newUser.ActiveLevelID),
+
+      diet: newUser.DietName || '',
+
+      health: newUser.HealthCondition || []
     }
   },
   { immediate: true }
 )
 
-// Password visibility
+// Password toggle
 const showPassword = ref(false)
 function togglePassword() {
   showPassword.value = !showPassword.value
 }
 
-// 🔥 Check if all fields are filled
 const isFormValid = computed(() => {
   return (
     settings.value.birthdate &&
     settings.value.email &&
-    settings.value.password &&
     settings.value.goal &&
-    settings.value.activity &&
-    settings.value.diet &&
-    settings.value.health.length > 0
+    settings.value.activity
   )
 })
 
-// Save changes
 function saveSettings() {
-  if (!isFormValid.value) return
-
   emit('updateUser', { ...settings.value })
   alert('✅ Settings saved successfully!')
 }
 
-// Logout function
 function logout() {
   alert('🔒 Logged out successfully!')
-  // هنا ممكن إعادة التوجيه للصفحة الرئيسية أو صفحة تسجيل الدخول
-  // مثال: window.location.href = '/login'
 }
 </script>

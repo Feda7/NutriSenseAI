@@ -320,6 +320,13 @@ const goalMap = {
   'Gain Weight': 2,
   'Maintain Weight': 3
 }
+const dietMap = {
+  'Bland': 2,
+  'High-Protein': 3,
+  'High-Fiber': 4,
+  'Low-Saturated Fat': 5,
+  'DASH': 6
+}
 
 /* =========================
     Submit (FINAL & SAFE ✅)
@@ -341,7 +348,9 @@ const submitForm = async () => {
   CurrentWeight: localData.value.currentWeight,
   DesiredWeight: localData.value.targetWeight,
   ActiveLevelID: activityMap[localData.value.activity],
-  GoalID: goalMap[localData.value.goal]
+  GoalID: goalMap[localData.value.goal],
+  DietTypeID: dietMap[localData.value.diet] || null
+
 }
 
   console.log('📤 SENDING TO BACKEND:', fullData)
