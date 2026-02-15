@@ -60,6 +60,7 @@
           </div>
 
           <!-- two columns: charts placeholders + lists -->
+           
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="col-span-2 space-y-4">
               <div class="bg-white rounded-2xl p-6 shadow">
@@ -68,7 +69,29 @@
                   <div class="w-48">
                     <ul class="space-y-2 text-sm">
                       <li v-for="(d, idx) in diets" :key="d.name" class="flex justify-between">
-                        <span>{{ d.name }}</span>
+                        <span>{{ d.n
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        ame }}</span>
                         <span class="font-semibold">{{ usersByDiet[d.name] || 0 }}</span>
                       </li>
                     </ul>
@@ -449,9 +472,9 @@ const modal = reactive({
   form: { name:'', calories:0, protein:0, carbs:0, fat:0, image:'' },
   dietOpen: false,
   dietForm: { name:'', macro:'', description:'' },
-  dietOpen: false,
   editingDiet: false
 })
+
 
 function openAddMeal(){
   modal.editing = false
