@@ -110,5 +110,6 @@ onMounted(() => {
     max-height: 40px !important;
     object-fit: cover !important;
     border-radius: 9999px !important; /* لجعلها دائرية دائماً */
+    display: block !important;
 }
 </style>
