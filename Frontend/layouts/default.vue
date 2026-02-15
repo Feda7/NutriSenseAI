@@ -6,6 +6,8 @@
     <Footer v-if="!hide" />
 </template>
 <script setup>
+import { computed } from 'vue' // تأكدي من وجود هذا السطر
+import { useRoute } from 'vue-router'
 const route = useRoute();
 
 // hide navbar only on homepage
