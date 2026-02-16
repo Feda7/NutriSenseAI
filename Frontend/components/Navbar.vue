@@ -32,12 +32,13 @@
                     </li>
                 </ul>
                 <!-- Profile -->
-                <div class="hidden md:flex items-center gap-3">
-                    <img src="#" alt="Profile" class="w-8 h-8 rounded-full border" />
+                 <div class="hidden md:flex items-center gap-3">
+                    <img 
+                        :src="userPhoto" 
+                        alt="Profile" 
+                        class="profile-img-fix border-2 border-white shadow-sm"
+                    />
                     <NuxtLink to="/profile" class="text-white hover:text-gray-600 font-medium">Profile</NuxtLink>
-                <!--<a href="#" @click.prevent="handleNav('/profile')" class="text-white hover:text-gray-600 font-medium">
-                        Profile
-                    </a>-->
                 </div>
             </nav>
             <transition name="NutriSense">
@@ -66,13 +67,23 @@
     </div>
 </template>
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const isOpen = ref(false)
+const userPhoto = ref('#') // متغير جديد لتخزين رابط الصورة
 
 function closeMenu() {
   isOpen.value = false
 }
+
+// الكود الذي يقرأ الصورة عند فتح أي صفحة
+onMounted(() => {
+  const savedPhoto = localStorage.getItem('userPhoto')
+  if (savedPhoto) {
+    userPhoto.value = savedPhoto
+  }
+})
+
 // import { useRouter } from 'vue-router'
 // import { useAuth } from '~/composables/useAuth'
 
@@ -87,3 +98,18 @@ function closeMenu() {
 //     }
 // }
 </script>
+
+<style scoped>
+/* هذا الكود يضمن أن الصورة لن تتجاوز هذا الحجم أبداً مهما حدث */
+.profile-img-fix {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    object-fit: cover !important;
+    border-radius: 9999px !important; /* لجعلها دائرية دائماً */
+    display: block !important;
+}
+</style>

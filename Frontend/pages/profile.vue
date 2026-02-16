@@ -33,14 +33,19 @@ onMounted(async () => {
     const dbUser = await $fetch(
       `http://localhost:5000/api/user/${userId}`
     )
+    
+    const savedPhoto = localStorage.getItem('userPhoto')
+
+    // في ملف profile.vue - امسحي القوس القديم وضعي هذا مكانه بالضبط
     user.value = {
       ...dbUser,
+      // هذا السطر سيسحب الصورة من الذاكرة بدلاً من القيمة الفارغة
+      photo: savedPhoto || '#', 
       name: `${dbUser.FirstName} ${dbUser.LastName}`,
       age: calculateAge(dbUser.BirthDate),
       height: dbUser.Height,
       weight: dbUser.CurrentWeight,
       email: dbUser.Email,
-      photo: '#',
       about: '',
       reason: '',
       inspiration: '',
@@ -48,8 +53,9 @@ onMounted(async () => {
       goal: mapGoal(dbUser.GoalID),
       activity:  mapActivity(dbUser.ActiveLevelID),
       diet: dbUser.DietName || '',
-      health: dbUser.MedicalConditions || []
-
+      health: dbUser.MedicalConditions
+        ? dbUser.MedicalConditions.split(',')
+        : []
     }
   } 
   catch (err) {
