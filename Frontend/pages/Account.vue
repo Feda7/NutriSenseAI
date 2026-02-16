@@ -33,6 +33,7 @@
           <input
             v-model="localData.birthDate"
             type="date"
+            :max="todayDate"
             class="w-full border rounded-lg px-4 py-2"
           />
         </div>
@@ -67,6 +68,7 @@
           <input
             v-model="localData.currentWeight"
             type="number"
+            min="0"
             placeholder="Enter your current weight"
             class="w-full border rounded-lg px-4 py-2"
           />
@@ -78,6 +80,7 @@
           <input
             v-model="localData.targetWeight"
             type="number"
+            min="0"
             placeholder="Enter your target weight"
             class="w-full border rounded-lg px-4 py-2"
           />
@@ -88,6 +91,7 @@
           <label class="block text-gray-700 mb-1">Height (cm)</label>
           <input
             v-model="localData.height"
+            min="0"
             type="number"
             placeholder="Enter your height in cm"
             class="w-full border rounded-lg px-4 py-2"
@@ -213,10 +217,16 @@
             </button>
           </NuxtLink>
 
-          <button
-            @click="submitForm"
+         <button
+            @click="submitForm" 
             type="button"
-            class="mt-14 bg-green-600 text-white px-10 py-2 rounded-xl"
+            :disabled="!isFormValid"
+            :class="[
+              'mt-14 px-10 py-2 rounded-xl transition-all duration-300 font-semibold',
+              isFormValid 
+                ? 'bg-green-600 text-white hover:bg-green-700 cursor-pointer shadow-md opacity-100' 
+                : 'bg-green-600 text-white opacity-40 cursor-not-allowed'
+            ]"
           >
             Done
           </button>
@@ -335,6 +345,34 @@ const diseaseMap = {
 }
 
 /* =========================
+    Validation Logic
+========================= */
+const isFormValid = computed(() => {
+  const d = localData.value;
+  
+  // التأكد من التاريخ (ليس في المستقبل)
+  const isBirthDateValid = d.birthDate && d.birthDate <= todayDate;
+
+  // المعايير العالمية (الطول > 50، الوزن > 20)
+  const isWeightValid = d.currentWeight >= 20;
+  const isTargetWeightValid = d.targetWeight >= 20;
+  const isHeightValid = d.height >= 50;
+
+  return (
+    d.firstName && 
+    d.lastName && 
+    isBirthDateValid && 
+    d.gender && 
+    isWeightValid && 
+    isTargetWeightValid && 
+    isHeightValid && 
+    d.activity && 
+    d.goal &&
+    d.medical.length > 0
+  )
+})
+
+/* =========================
     Submit (FINAL & SAFE ✅)
 ========================= */
 const submitForm = async () => {
@@ -344,20 +382,21 @@ const submitForm = async () => {
   }
 
   const fullData = {
-  Email: register2.value.Email,
-  Password: register2.value.Password,
-  FirstName: localData.value.firstName,
-  LastName: localData.value.lastName,
-  BirthDate: localData.value.birthDate,
-  Gender: localData.value.gender,
-  Height: localData.value.height,
-  CurrentWeight: localData.value.currentWeight,
-  DesiredWeight: localData.value.targetWeight,
-  ActiveLevelID: activityMap[localData.value.activity],
-  GoalID: goalMap[localData.value.goal],
-  DietTypeID: dietMap[localData.value.diet] || null,
-  MedicalConditions: localData.value.medical.map(m => diseaseMap[m])
-}
+    Email: register2.value.Email,
+    Password: register2.value.Password,
+    FirstName: localData.value.firstName,
+    LastName: localData.value.lastName,
+    BirthDate: localData.value.birthDate,
+    Gender: localData.value.gender,
+    Height: localData.value.height,
+    CurrentWeight: localData.value.currentWeight,
+    DesiredWeight: localData.value.targetWeight,
+    ActiveLevelID: activityMap[localData.value.activity],
+    GoalID: goalMap[localData.value.goal],
+    DietTypeID: dietMap[localData.value.diet] || null,
+    // حافظنا على كود زميلتك هنا تماماً
+    MedicalConditions: localData.value.medical.map(m => diseaseMap[m])
+  }
 
   console.log('📤 SENDING TO BACKEND:', fullData)
 
@@ -365,11 +404,27 @@ const submitForm = async () => {
     const res = await $fetch('http://localhost:5000/api/user', {
       method: 'POST',
       body: fullData
-})
+    })
 
-localStorage.setItem('userId', res.userId)
+    // السطرين المطلوبين فقط لضمان الانتقال بنجاح
+    // بعد نجاح الـ fetch مباشرة
+    if (res) {
+       // 1. حفظ البيانات الأساسية
+       const idToSave = res.userId || res.id; // التأكد من جلب الآيدي سواء كان اسمه id أو userId
+       if (idToSave) {
+          localStorage.setItem('userId', idToSave);
+          localStorage.setItem('isLoggedIn', 'true');
+       }
 
-    router.push('/profile')
+       // 2. استخدام التوجيه المباشر لضمان النقل
+       console.log('✅ Success! Redirecting to profile...');
+       
+       // إضافة تأخير بسيط جداً (500 ملي ثانية) لضمان كتابة البيانات في الـ LocalStorage قبل الانتقال
+       setTimeout(() => {
+         router.replace('/profile'); // استخدمنا replace بدل push لضمان عدم الرجوع للخلف وتعليق الصفحة
+       }, 500);
+    }
+    
   } catch (err) {
     console.error('❌ API ERROR:', err)
   }
