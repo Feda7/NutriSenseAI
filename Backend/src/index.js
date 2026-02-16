@@ -31,9 +31,13 @@ app.post('/api/user', async (req, res) => {
       DesiredWeight,
       ActiveLevelID,
       GoalID,
-      DietTypeID
+      DietTypeID,
+      MedicalConditions // لازم يجي Array فيه Disease IDs
     } = req.body;
 
+    // =========================
+    // 1️⃣ إدخال المستخدم
+    // =========================
     const [result] = await db.promise().query(`
       INSERT INTO \`user\`
       (FirstName, LastName, Email, Password, BirthDate, Gender, Height, CurrentWeight, DesiredWeight, ActiveLevelID, GoalID, JoinDate)
@@ -49,20 +53,68 @@ app.post('/api/user', async (req, res) => {
       CurrentWeight,
       DesiredWeight,
       ActiveLevelID,
-      GoalID
+      GoalID,
     ]);
 
     const userId = result.insertId;
 
-    let dietTypeId = DietTypeID;
+    // =========================
+    // 2️⃣ تخزين الأمراض في جدول UserDiseases
+    // =========================
+    let conditions = [];
 
-    if (!dietTypeId) {
-      dietTypeId =
-        GoalID == 1 ? 4 :
-        GoalID == 2 ? 2 :
-        3;
+    if (Array.isArray(MedicalConditions) && MedicalConditions.length > 0) {
+      conditions = MedicalConditions;
+
+      // حذف None لو موجود مع أمراض ثانية (نفترض ID=1 هو None)
+      if (conditions.length > 1 && conditions.includes(1)) {
+        conditions = conditions.filter(id => id !== 1);
+      }
+
+      for (const diseaseId of conditions) {
+        await db.promise().query(
+          "INSERT INTO UserDiseases (UserID, DiseasesID) VALUES (?, ?)",
+          [userId, diseaseId]
+        );
+      }
     }
 
+    let dietTypeId = DietTypeID;
+
+    // =========================
+    // 3️⃣ تحديد الدايت تلقائيًا لو ما انرسل
+    // =========================
+    if (!dietTypeId) {
+
+      if (!conditions.length || conditions.includes(1)) {
+        dietTypeId =
+          GoalID == 1 ? 4 :
+          GoalID == 2 ? 2 :
+          3;
+      }
+
+      else if (conditions.length >= 3) {
+        dietTypeId = 6;
+      }
+
+      else if (conditions.length === 2) {
+        dietTypeId = 6;
+      }
+
+      else if (conditions.length === 1) {
+      const disease = conditions[0];
+
+      if (disease == 2) dietTypeId = 6;      // Hypertension
+      else if (disease == 3) dietTypeId = 4; // Diabetes
+      else if (disease == 4) dietTypeId = 2; // Colon
+      else if (disease == 5) dietTypeId = 5; // Cholesterol
+    }
+
+    }
+
+    // =========================
+    // 4️⃣ جلب الدايت
+    // =========================
     const [dietRows] = await db.promise().query(
       "SELECT * FROM DietType WHERE DietTypeID = ?",
       [dietTypeId]
@@ -74,13 +126,21 @@ app.post('/api/user', async (req, res) => {
       return res.status(400).json({ error: "Invalid DietTypeID" });
     }
 
+    let baseMultiplier = 30;
+
+    if (Gender === 'Male') baseMultiplier = 32;
+    else if (Gender === 'Female') baseMultiplier = 28;
+
     const dailyCalories =
-      CurrentWeight * 30 * (diet.CaloriesMultiplier || 1);
+      CurrentWeight * baseMultiplier * (diet.CaloriesMultiplier || 1);
 
     const proteinTarget = dailyCalories * diet.ProteinRatio;
     const fatTarget = dailyCalories * diet.FatRatio;
     const carbTarget = dailyCalories * diet.CarbRatio;
 
+    // =========================
+    // 5️⃣ تخزين الدايت للمستخدم
+    // =========================
     await db.promise().query(`
       INSERT INTO userdiettype
       (UserID, DietTypeID, StartDate, Goal, DailyCaloriesTarget, ProteinTarget, FatTarget, CarbTarget)
@@ -105,6 +165,7 @@ app.post('/api/user', async (req, res) => {
     res.status(500).json({ error: "Database error" });
   }
 });
+
 
 
 // =============================
@@ -135,6 +196,14 @@ app.get('/api/user/:id', async (req, res) => {
 
     const user = userRows[0];
     const diet = dietRows[0];
+    const [diseaseRows] = await db.promise().query(`
+    SELECT d.DiseasesID, d.NameDis
+    FROM UserDiseases ud
+    JOIN Diseases d ON ud.DiseasesID = d.DiseasesID
+    WHERE ud.UserID = ?
+  `, [userId]);
+
+const diseases = diseaseRows.map(d => d.NameDis);
 
     res.json({
       ...user,
@@ -144,7 +213,9 @@ app.get('/api/user/:id', async (req, res) => {
       DailyCaloriesTarget: diet?.DailyCaloriesTarget || null,
       ProteinTarget: diet?.ProteinTarget || null,
       FatTarget: diet?.FatTarget || null,
-      CarbTarget: diet?.CarbTarget || null
+      CarbTarget: diet?.CarbTarget || null,
+      MedicalConditions: diseases
+
     });
 
   } catch (err) {
