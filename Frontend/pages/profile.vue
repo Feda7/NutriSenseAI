@@ -53,9 +53,7 @@ onMounted(async () => {
       goal: mapGoal(dbUser.GoalID),
       activity:  mapActivity(dbUser.ActiveLevelID),
       diet: dbUser.DietName || '',
-      health: dbUser.MedicalConditions
-        ? dbUser.MedicalConditions.split(',')
-        : []
+      health: dbUser.MedicalConditions || []
     }
   } 
   catch (err) {
