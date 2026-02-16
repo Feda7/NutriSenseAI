@@ -34,7 +34,9 @@ onMounted(async () => {
       `http://localhost:5000/api/user/${userId}`
     )
     
-    const savedPhoto = localStorage.getItem('userPhoto')
+    
+    // التعديل: قراءة الصورة الخاصة بهذا المستخدم فقط
+    const savedPhoto = localStorage.getItem(`userPhoto_${userId}`)
 
     // في ملف profile.vue - امسحي القوس القديم وضعي هذا مكانه بالضبط
     user.value = {

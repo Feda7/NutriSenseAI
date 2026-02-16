@@ -78,9 +78,20 @@ function closeMenu() {
 
 // الكود الذي يقرأ الصورة عند فتح أي صفحة
 onMounted(() => {
-  const savedPhoto = localStorage.getItem('userPhoto')
-  if (savedPhoto) {
-    userPhoto.value = savedPhoto
+  // أولاً: نجلب الآيدي حق المستخدم اللي مسجل دخول دحين
+  const userId = localStorage.getItem('userId')
+  
+  if (userId) {
+    // ثانياً: نبحث عن الصورة اللي تنتهي برقم هذا المستخدم بس
+    const savedPhoto = localStorage.getItem(`userPhoto_${userId}`)
+    
+    if (savedPhoto) {
+      userPhoto.value = savedPhoto
+    } else {
+      userPhoto.value = '#' // لو ماله صورة تطلع فاضية
+    }
+  } else {
+    userPhoto.value = '#' // لو مافي مستخدم أصلاً
   }
 })
 

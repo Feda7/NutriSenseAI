@@ -155,12 +155,24 @@ function choosePhoto() {
 function handlePhoto(e) {
   const file = e.target.files[0]
   if (!file) return
+  
+  // 1. نجلب الآيدي حق المستخدم الحالي
+  const userId = localStorage.getItem('userId')
+  
   const reader = new FileReader()
   reader.onload = (evt) => {
-    localUser.value.photo = evt.target.result
+    const base64Image = evt.target.result
+    
+    // 2. نحدث الصورة في الصفحة أمامك
+    localUser.value.photo = base64Image
 
-    localStorage.setItem('userPhoto', evt.target.result) 
- 
+    // 3. التعديل الجوهري: الحفظ باسم "خاص" بهذا المستخدم فقط
+    if (userId) {
+      localStorage.setItem(`userPhoto_${userId}`, base64Image)
+    } else {
+      // احتياطياً لو الآيدي مفقود نحفظه بشكل عام لكن الأفضل بالآيدي
+      localStorage.setItem('userPhoto', base64Image) 
+    }
   }
   reader.readAsDataURL(file)
 }
