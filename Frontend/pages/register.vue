@@ -116,4 +116,25 @@ const handleLogin = async () => {
     console.error('Login error:', error)
   }
 }
+
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  const inputs = Array.from(document.querySelectorAll('input'))
+
+  inputs.forEach((input, index) => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        const next = inputs[index + 1]
+        if (next) {
+          next.focus()
+        } else {
+          // Auto Trans
+          handleLogin()
+        }
+      }
+    })
+  })
+})
 </script>

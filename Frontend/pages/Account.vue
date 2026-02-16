@@ -374,4 +374,20 @@ localStorage.setItem('userId', res.userId)
     console.error('❌ API ERROR:', err)
   }
 }
+
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  const inputs = Array.from(document.querySelectorAll('input, select'))
+  inputs.forEach((input, index) => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        // Auto Trans
+        const next = inputs[index + 1]
+        if (next) next.focus()
+      }
+    })
+  })
+})
 </script>
