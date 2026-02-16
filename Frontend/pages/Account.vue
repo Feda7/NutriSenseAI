@@ -314,7 +314,6 @@ const activityMap = {
   Moderate: 2,
   High: 3
 }
-
 const goalMap = {
   'Lose Weight': 1,
   'Gain Weight': 2,
@@ -326,6 +325,13 @@ const dietMap = {
   'High-Fiber': 4,
   'Low-Saturated Fat': 5,
   'DASH': 6
+}
+const diseaseMap = {
+  'None': 1,
+  'Hypertension': 3,
+  'Diabetes': 2,
+  'Colon': 5,
+  'Cholesterol': 4
 }
 
 /* =========================
@@ -349,8 +355,8 @@ const submitForm = async () => {
   DesiredWeight: localData.value.targetWeight,
   ActiveLevelID: activityMap[localData.value.activity],
   GoalID: goalMap[localData.value.goal],
-  DietTypeID: dietMap[localData.value.diet] || null
-
+  DietTypeID: dietMap[localData.value.diet] || null,
+  MedicalConditions: localData.value.medical.map(m => diseaseMap[m])
 }
 
   console.log('📤 SENDING TO BACKEND:', fullData)
