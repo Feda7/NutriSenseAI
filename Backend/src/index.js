@@ -126,17 +126,57 @@ app.post('/api/user', async (req, res) => {
       return res.status(400).json({ error: "Invalid DietTypeID" });
     }
 
-    let baseMultiplier = 30;
+    // =========================
+    // 4️⃣ حساب السعرات بطريقة علمية (BMR + Activity + Goal)
+    // =========================
 
-    if (Gender === 'Male') baseMultiplier = 32;
-    else if (Gender === 'Female') baseMultiplier = 28;
+    // نحسب العمر من تاريخ الميلاد
+    const birthDate = new Date(BirthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
 
-    const dailyCalories =
-      CurrentWeight * baseMultiplier * (diet.CaloriesMultiplier || 1);
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
 
-    const proteinTarget = dailyCalories * diet.ProteinRatio;
-    const fatTarget = dailyCalories * diet.FatRatio;
-    const carbTarget = dailyCalories * diet.CarbRatio;
+    // 1️⃣ حساب BMR (معادلة Mifflin-St Jeor)
+    let BMR;
+
+    if (Gender === 'Male') {
+      BMR = (10 * CurrentWeight) + (6.25 * Height) - (5 * age) + 5;
+    } else {
+      BMR = (10 * CurrentWeight) + (6.25 * Height) - (5 * age) - 161;
+    }
+
+    // 2️⃣ معامل النشاط
+    let activityMultiplier = 1.2; // default
+
+    if (ActiveLevelID == 2) activityMultiplier = 1.55;
+    if (ActiveLevelID == 3) activityMultiplier = 1.725;
+
+    // TDEE
+    let dailyCalories = BMR * activityMultiplier;
+
+    // 3️⃣ تعديل حسب الهدف
+    if (GoalID == 1) {          // Lose Weight
+      dailyCalories -= 500;
+    } 
+    else if (GoalID == 2) {     // Gain Weight
+      dailyCalories += 400;
+    }
+
+    // 4️⃣ تطبيق معامل الدايت
+    dailyCalories = dailyCalories * (diet.CaloriesMultiplier || 1);
+
+    // تقريب الرقم
+    dailyCalories = Math.round(dailyCalories);
+
+    // حساب الماكروز
+    const proteinTarget = Math.round(dailyCalories * diet.ProteinRatio);
+    const fatTarget = Math.round(dailyCalories * diet.FatRatio);
+    const carbTarget = Math.round(dailyCalories * diet.CarbRatio);
+
 
     // =========================
     // 5️⃣ تخزين الدايت للمستخدم
