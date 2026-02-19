@@ -77,30 +77,7 @@
       </div>
     </div>
 
-    <div class="border-t pt-4 space-y-3">
-      <h3 class="text-lg font-semibold text-gray-800">About Me</h3>
-      <textarea
-        v-model="localUser.about"
-        :readonly="!editing"
-        class="w-full border rounded-lg px-3 py-2 text-gray-600 resize-none"
-      ></textarea>
-
-      <h3 class="text-lg font-semibold text-gray-800">
-        Why I Want to Get in Shape
-      </h3>
-      <textarea
-        v-model="localUser.reason"
-        :readonly="!editing"
-        class="w-full border rounded-lg px-3 py-2 text-gray-600 resize-none"
-      ></textarea>
-
-      <h3 class="text-lg font-semibold text-gray-800">My Inspirations</h3>
-      <textarea
-        v-model="localUser.inspiration"
-        :readonly="!editing"
-        class="w-full border rounded-lg px-3 py-2 text-gray-600 resize-none"
-      ></textarea>
-    </div>
+    
   </div>
 </template>
 
@@ -129,10 +106,7 @@ const isFormValid = computed(() => {
     u.name &&
     u.age &&
     u.height &&
-    u.weight &&
-    u.about &&
-    u.reason &&
-    u.inspiration
+    u.weight 
   )
 })
 
