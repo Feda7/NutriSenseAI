@@ -84,23 +84,23 @@
         <label class="block text-gray-600 mb-1">Health Condition</label>
         <div class="space-y-2">
           <label class="flex items-center space-x-3">
-            <input type="checkbox" value="No Condition" v-model="settings.health" />
+            <input type="checkbox" :value="1" v-model="settings.health" />
             <span>No Condition</span>
           </label>
           <label class="flex items-center space-x-3">
-            <input type="checkbox" value="Hypertension" v-model="settings.health" />
+            <input type="checkbox" :value="2" v-model="settings.health" />
             <span>Hypertension</span>
           </label>
           <label class="flex items-center space-x-3">
-            <input type="checkbox" value="Diabetes" v-model="settings.health" />
+            <input type="checkbox" :value="3" v-model="settings.health" />
             <span>Diabetes</span>
           </label>
           <label class="flex items-center space-x-3">
-            <input type="checkbox" value="Colon" v-model="settings.health" />
+            <input type="checkbox" :value="4" v-model="settings.health" />
             <span>Colon</span>
           </label>
           <label class="flex items-center space-x-3">
-            <input type="checkbox" value="Cholesterol" v-model="settings.health" />
+            <input type="checkbox" :value="5" v-model="settings.health" />
             <span>Cholesterol</span>
           </label>
         </div>
@@ -181,7 +181,8 @@ watch(
 
       diet: newUser.DietName || '',
 
-      health: newUser.MedicalConditions || []
+      health: newUser.DiseaseIDs || []
+
     }
   },
   { immediate: true }
@@ -202,10 +203,40 @@ const isFormValid = computed(() => {
   )
 })
 
-function saveSettings() {
-  emit('updateUser', { ...settings.value })
-  alert('✅ Settings saved successfully!')
+async function saveSettings() {
+  const userId = localStorage.getItem('userId')
+
+  try {
+    await $fetch(`http://localhost:5000/api/user/${userId}`, {
+      method: 'PUT',
+      body: {
+        FirstName: props.user.FirstName,
+        LastName: props.user.LastName,
+        BirthDate: settings.value.birthdate,
+        Height: props.user.Height,
+        CurrentWeight: props.user.CurrentWeight,
+        DesiredWeight: props.user.DesiredWeight,
+        Gender: props.user.Gender,
+        GoalID: props.user.GoalID,
+        ActiveLevelID:
+          settings.value.activity === 'Low' ? 1 :
+          settings.value.activity === 'Moderate' ? 2 : 3,
+        Email: settings.value.email,
+        Password: settings.value.password || props.user.Password,
+        Diseases: settings.value.health
+      }
+    })
+
+    alert('✅ Settings updated successfully!')
+    location.reload()
+
+  } catch (err) {
+    console.error(err)
+    alert('❌ Failed to update')
+  }
 }
+
+
 
 function logout() {
   alert('🔒 Logged out successfully!')
