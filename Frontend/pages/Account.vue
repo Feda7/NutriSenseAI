@@ -400,33 +400,32 @@ const submitForm = async () => {
 
   console.log('📤 SENDING TO BACKEND:', fullData)
 
-  try {
+   try {
+    // 1. هنا نضع الكود الذي سألتِ عنه (إرسال البيانات للسيرفر)
     const res = await $fetch('http://localhost:5000/api/user', {
       method: 'POST',
       body: fullData
     })
 
-    // السطرين المطلوبين فقط لضمان الانتقال بنجاح
-    // بعد نجاح الـ fetch مباشرة
-    if (res) {
-       // 1. حفظ البيانات الأساسية
-       const idToSave = res.userId || res.id; // التأكد من جلب الآيدي سواء كان اسمه id أو userId
-       if (idToSave) {
-          localStorage.setItem('userId', idToSave);
-          localStorage.setItem('isLoggedIn', 'true');
-       }
+    // 2. هنا نتأكد من الـ ID ونحفظه في المتصفح
+    const finalId = res.userId || res.id; 
 
-       // 2. استخدام التوجيه المباشر لضمان النقل
-       console.log('✅ Success! Redirecting to profile...');
+    if (res) {
+       if (finalId) {
+          localStorage.setItem('userId', finalId);
+       }
+       localStorage.setItem('isLoggedIn', 'true');
        
-       // إضافة تأخير بسيط جداً (500 ملي ثانية) لضمان كتابة البيانات في الـ LocalStorage قبل الانتقال
-       setTimeout(() => {
-         router.replace('/profile'); // استخدمنا replace بدل push لضمان عدم الرجوع للخلف وتعليق الصفحة
-       }, 500);
+       console.log('✅ Success! Moving to profile...');
+       
+       // 3. هنا أمر الانتقال المباشر لصفحة البروفايل
+       router.push('/profile');
     }
     
   } catch (err) {
     console.error('❌ API ERROR:', err)
+    // تنبيه بسيط في حال تكرر الإيميل مثلاً
+    alert('حدث خطأ: تأكدي من أن الإيميل جديد وغير مستخدم مسبقاً');
   }
 }
 
