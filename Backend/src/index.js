@@ -38,7 +38,7 @@ app.post('/api/user', async (req, res) => {
     // =========================
     // 1️⃣ إدخال المستخدم
     // =========================
-    const [result] = await db.promise().query(`
+    const [result] = await db.query(`
       INSERT INTO \`user\`
       (FirstName, LastName, Email, Password, BirthDate, Gender, Height, CurrentWeight, DesiredWeight, ActiveLevelID, GoalID, JoinDate)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
@@ -72,7 +72,7 @@ app.post('/api/user', async (req, res) => {
       }
 
       for (const diseaseId of conditions) {
-        await db.promise().query(
+        await db.query(
           "INSERT INTO UserDiseases (UserID, DiseasesID) VALUES (?, ?)",
           [userId, diseaseId]
         );
@@ -115,7 +115,7 @@ app.post('/api/user', async (req, res) => {
     // =========================
     // 4️⃣ جلب الدايت
     // =========================
-    const [dietRows] = await db.promise().query(
+    const [dietRows] = await db.query(
       "SELECT * FROM DietType WHERE DietTypeID = ?",
       [dietTypeId]
     );
@@ -181,7 +181,7 @@ app.post('/api/user', async (req, res) => {
     // =========================
     // 5️⃣ تخزين الدايت للمستخدم
     // =========================
-    await db.promise().query(`
+    await db.query(`
       INSERT INTO userdiettype
       (UserID, DietTypeID, StartDate, Goal, DailyCaloriesTarget, ProteinTarget, FatTarget, CarbTarget)
       VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?)
@@ -215,7 +215,7 @@ app.get('/api/user/:id', async (req, res) => {
   try {
     const userId = req.params.id;
 
-    const [userRows] = await db.promise().query(
+    const [userRows] = await db.query(
       "SELECT * FROM `user` WHERE UserID = ?",
       [userId]
     );
@@ -223,9 +223,9 @@ app.get('/api/user/:id', async (req, res) => {
     if (!userRows.length) {
       return res.status(404).json({ message: "User not found" });
     }
-
+    const user = userRows[0];
     // ✅ نجيب آخر دايت مضاف للمستخدم
-    const [dietRows] = await db.promise().query(`
+    const [dietRows] = await db.query(`
       SELECT ud.*, d.Name
       FROM userdiettype ud
       JOIN DietType d ON ud.DietTypeID = d.DietTypeID
@@ -234,35 +234,191 @@ app.get('/api/user/:id', async (req, res) => {
       LIMIT 1
     `, [userId]);
 
-    const user = userRows[0];
     const diet = dietRows[0];
-    const [diseaseRows] = await db.promise().query(`
-    SELECT d.DiseasesID, d.NameDis
-    FROM UserDiseases ud
-    JOIN Diseases d ON ud.DiseasesID = d.DiseasesID
-    WHERE ud.UserID = ?
-  `, [userId]);
+    // جلب الأمراض
+    const [diseaseRows] = await db.query(`
+      SELECT DiseasesID
+      FROM UserDiseases 
+      WHERE UserID = ?
+    `, [userId]);
 
-const diseases = diseaseRows.map(d => d.NameDis);
+    // نحولهم إلى Array IDs
+    const diseaseIDs = diseaseRows.map(d => Number(d.DiseasesID));
 
-    res.json({
-      ...user,
+res.json({
+  ...user,
 
-      // نرجع البيانات بأسماء واضحة للفرونت
-      DietName: diet?.Name || null,
-      DailyCaloriesTarget: diet?.DailyCaloriesTarget || null,
-      ProteinTarget: diet?.ProteinTarget || null,
-      FatTarget: diet?.FatTarget || null,
-      CarbTarget: diet?.CarbTarget || null,
-      MedicalConditions: diseases
+  DietName: diet?.Name || null,
+  DailyCaloriesTarget: diet?.DailyCaloriesTarget || null,
+  ProteinTarget: diet?.ProteinTarget || null,
+  FatTarget: diet?.FatTarget || null,
+  CarbTarget: diet?.CarbTarget || null,
 
-    });
+  DiseaseIDs: diseaseIDs
+});
+
 
   } catch (err) {
     console.error("❌ Error fetching user:", err);
     res.status(500).json({ error: "Database error" });
   }
 });
+// =============================
+// ✅ Update User Settings
+// =============================
+app.put('/api/user/:id', async (req, res) => {
+  const userId = req.params.id;
+
+  const {
+    FirstName,
+    LastName,
+    BirthDate,
+    Height,
+    CurrentWeight,
+    DesiredWeight,
+    Gender,
+    GoalID,
+    ActiveLevelID,
+    Email,
+    Password,
+    Diseases
+  } = req.body;
+
+  try {
+
+    // 1️⃣ تحديث بيانات المستخدم
+    await db.query(
+      `UPDATE \`user\` SET
+        FirstName = ?,
+        LastName = ?,
+        BirthDate = ?,
+        Height = ?,
+        CurrentWeight = ?,
+        DesiredWeight = ?,
+        Gender = ?,
+        GoalID = ?,
+        ActiveLevelID = ?,
+        Email = ?,
+        Password = ?
+      WHERE UserID = ?`,
+      [
+        FirstName,
+        LastName,
+        BirthDate,
+        Height,
+        CurrentWeight,
+        DesiredWeight,
+        Gender,
+        GoalID,
+        ActiveLevelID,
+        Email,
+        Password,
+        userId
+      ]
+    );
+
+    // 2️⃣ تحديث الأمراض
+    await db.query(`DELETE FROM UserDiseases WHERE UserID = ?`, [userId]);
+
+    if (Diseases && Diseases.length > 0) {
+      for (const diseaseId of Diseases) {
+        await db.query(
+          `INSERT INTO UserDiseases (UserID, DiseasesID) VALUES (?, ?)`,
+          [userId, diseaseId]
+        );
+      }
+    }
+
+    let conditions = Diseases || [];
+let dietTypeId;
+
+// لو ما عنده أمراض
+if (!conditions.length || conditions.includes(1)) {
+  dietTypeId =
+    GoalID == 1 ? 4 :
+    GoalID == 2 ? 2 :
+    3;
+}
+
+// لو عنده أكثر من مرض
+else if (conditions.length >= 2) {
+  dietTypeId = 6;
+}
+
+// لو عنده مرض واحد
+else if (conditions.length === 1) {
+  const disease = conditions[0];
+
+  if (disease == 2) dietTypeId = 6;      // Hypertension
+  else if (disease == 3) dietTypeId = 4; // Diabetes
+  else if (disease == 4) dietTypeId = 2; // Colon
+  else if (disease == 5) dietTypeId = 5; // Cholesterol
+}
+
+// الآن نجيب الدايت
+const [dietRows] = await db.query(
+  `SELECT * FROM DietType WHERE DietTypeID = ?`,
+  [dietTypeId]
+);
+
+const diet = dietRows[0];
+
+
+    // 4️⃣ حساب العمر
+    const birthDateObj = new Date(BirthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const monthDiff = today.getMonth() - birthDateObj.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
+
+    // 5️⃣ حساب BMR
+    let BMR;
+    if (Gender === 'Male') {
+      BMR = (10 * CurrentWeight) + (6.25 * Height) - (5 * age) + 5;
+    } else {
+      BMR = (10 * CurrentWeight) + (6.25 * Height) - (5 * age) - 161;
+    }
+
+    let activityMultiplier = 1.2;
+    if (ActiveLevelID == 2) activityMultiplier = 1.55;
+    if (ActiveLevelID == 3) activityMultiplier = 1.725;
+
+    let dailyCalories = BMR * activityMultiplier;
+
+    if (GoalID == 1) dailyCalories -= 500;
+    if (GoalID == 2) dailyCalories += 400;
+
+    dailyCalories = dailyCalories * (diet.CaloriesMultiplier || 1);
+    dailyCalories = Math.round(dailyCalories);
+
+    const proteinTarget = Math.round(dailyCalories * diet.ProteinRatio);
+    const fatTarget = Math.round(dailyCalories * diet.FatRatio);
+    const carbTarget = Math.round(dailyCalories * diet.CarbRatio);
+
+    // 6️⃣ تحديث آخر سجل في userdiettype
+    await db.query(
+      `UPDATE userdiettype
+        SET DailyCaloriesTarget = ?,
+            ProteinTarget = ?,
+            FatTarget = ?,
+            CarbTarget = ?
+        WHERE UserID = ?
+        ORDER BY StartDate DESC
+        LIMIT 1`,
+      [dailyCalories, proteinTarget, fatTarget, carbTarget, userId]
+    );
+
+    res.json({ message: "User fully updated successfully ✅" });
+
+  } catch (error) {
+    console.error("❌ UPDATE ERROR:", error);
+    res.status(500).json({ message: "Error updating user" });
+  }
+});
+
+
 
 
 // =============================

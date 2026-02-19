@@ -136,17 +136,57 @@ const isFormValid = computed(() => {
   )
 })
 
-function toggleEdit() {
+async function toggleEdit() {
   if (editing.value) {
     if (!isFormValid.value) {
       alert('⚠ Please fill all fields before saving.')
       return
     }
-    emit('updateUser', localUser.value)
-    alert('✅ Profile updated successfully!')
+
+    const userId = localStorage.getItem('userId')
+
+    // نفصل الاسم الأول والأخير
+    const nameParts = localUser.value.name.split(' ')
+    const firstName = nameParts[0]
+    const lastName = nameParts.slice(1).join(' ') || ''
+
+    // نحول العمر إلى تاريخ ميلاد تقريبي
+    const currentYear = new Date().getFullYear()
+    const birthYear = currentYear - localUser.value.age
+    const birthDate = `${birthYear}-01-01`
+
+    try {
+      await $fetch(`http://localhost:5000/api/user/${userId}`, {
+        method: 'PUT',
+        body: {
+          FirstName: firstName,
+          LastName: lastName,
+          BirthDate: birthDate,
+          Height: localUser.value.height,
+          CurrentWeight: localUser.value.weight,
+          DesiredWeight: props.user.DesiredWeight,
+          Gender: props.user.Gender,
+          GoalID: props.user.GoalID,
+          ActiveLevelID: props.user.ActiveLevelID,
+          Email: props.user.Email,
+          Password: props.user.Password,
+          Diseases: props.user.DiseaseIDs || []
+        }
+      })
+
+      alert('✅ Profile updated successfully!')
+      location.reload()
+
+    } catch (err) {
+      console.error(err)
+      alert('❌ Failed to update')
+      return
+    }
   }
+
   editing.value = !editing.value
 }
+
 
 function choosePhoto() {
   document.getElementById('photoInput').click()
