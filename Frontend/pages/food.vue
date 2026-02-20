@@ -44,45 +44,62 @@ snacks: [],
 const currentUser = useState('currentUser') 
 const userId = currentUser.value?.id || 1
 
-/* ADD FOOD MANUALLY */
+// ==============================
+// ✅ Add Meal
+// ==============================
 async function addFoodToMeal(mealName, foodItem) {
-  meals.value[mealName].push(foodItem)
-  consumed.value += foodItem.calories
-  remaining.value = userCalories.value - consumed.value
+  try {
+    // 1️⃣ إنشاء الوجبة في جدول Meal
+    const mealRes = await fetch('http://localhost:5000/api/meal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        mealType: mealName,        // breakfast / lunch / dinner / snacks
+        totalCalories: foodItem.calories,
+        details: foodItem.name
+      })
+    });
 
-  // 1️⃣ إنشاء الوجبة
-  const mealRes = await fetch('http://localhost:5000/api/meal', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userId: 1,                 // لاحقاً من اليوزر الحقيقي
-      mealType: mealName,        // breakfast / lunch / dinner / snacks
-      totalCalories: foodItem.calories,
-      details: foodItem.name
-    })
-  });
+    const mealData = await mealRes.json();
+    const mealId = mealData.mealId;
+    console.log('Meal created:', mealId);
 
-  const mealData = await mealRes.json();
-  const mealId = mealData.mealId;
+    if (!mealId) throw new Error('Meal creation failed');
 
-  // 2️⃣ إضافة الصنف داخل الوجبة
-  await fetch('http://localhost:5000/api/meal/item', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      mealId: mealId,
-      foodItemId: 1,            // مؤقتاً (لما نربط FoodItem فعلياً)
-      quantity: 1,
-      totalCalories: foodItem.calories,
-      name: foodItem.name
-    })
-  });
+    // 2️⃣ إضافة الصنف داخل جدول Contains
+    const containsRes = await fetch('http://localhost:5000/api/meal/item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mealId: mealId,
+        foodItemId: foodItem.id,    // لازم FoodItem موجود في جدول FoodItem
+        quantity: 1,
+        totalCalories: foodItem.calories,
+        name: foodItem.name
+      })
+    });
+
+    const containsData = await containsRes.json();
+    console.log('Food item added to meal:', containsData);
+
+    // 3️⃣ تحديث الحالة في الواجهة
+    meals.value[mealName].push(foodItem)
+    consumed.value += foodItem.calories
+    remaining.value = userCalories.value - consumed.value
+
+  } catch (err) {
+    console.error('Error adding food to meal:', err);
+  }
 }
 
-
-/* ADD VIA IMAGE + AI */
+// ==============================
+// ✅ Add Meal + AI
+// ==============================
 async function analyzeImageForMeal(mealName, imageFile) {
+  // مثال نتيجة AI مؤقتة
   const aiResult = {
+    id: 1,             // لاحقاً تحصلين ID الحقيقي من جدول FoodItem
     name: 'Chicken Salad',
     calories: 350,
     protein: 22,
@@ -90,36 +107,6 @@ async function analyzeImageForMeal(mealName, imageFile) {
     fat: 12
   }
 
-  meals.value[mealName].push(aiResult)
-  consumed.value += aiResult.calories
-  remaining.value = userCalories.value - consumed.value
-
-  // 1️⃣ إنشاء الوجبة
-  const mealRes = await fetch('http://localhost:5000/api/meal', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userId: 1,
-      mealType: mealName,
-      totalCalories: aiResult.calories,
-      details: aiResult.name
-    })
-  });
-
-  const mealData = await mealRes.json();
-  const mealId = mealData.mealId;
-
-  // 2️⃣ إضافة الصنف داخل الوجبة
-  await fetch('http://localhost:5000/api/meal/item', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      mealId: mealId,
-      foodItemId: 1,
-      quantity: 1,
-      totalCalories: aiResult.calories,
-      name: aiResult.name
-    })
-  });
+  await addFoodToMeal(mealName, aiResult)
 }
 </script>
