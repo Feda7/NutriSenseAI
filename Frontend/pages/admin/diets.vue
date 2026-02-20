@@ -1,13 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-100 flex">
-
-    <aside class="w-72 bg-white shadow-md">
-      <div class="p-6 border-b">
-        <h1 class="text-xl font-bold text-green-600">NutriSense Admin</h1>
-        <p class="text-sm text-gray-500 mt-1">Dashboard</p>
-      </div>
-    </aside>
-
+    
     <main class="flex-1 p-8">
 
       <header class="flex items-center justify-between mb-6">
@@ -79,6 +72,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  layout: "admin"
+})
 import { ref } from 'vue'
 
 const diets = ref(['Bland','High-Protein','High-Fiber','Low-Saturated Fat','DASH'])

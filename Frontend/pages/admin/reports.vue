@@ -1,24 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-100 flex">
-    <!-- Sidebar -->
-    <aside class="w-72 bg-white shadow-md flex flex-col">
-      <div class="p-6 border-b">
-        <h1 class="text-xl font-bold text-green-600">NutriSense Admin</h1>
-      </div>
-      <nav class="flex flex-col p-6 gap-2">
-        <a href="#" class="hover:bg-gray-200 p-2 rounded">Overview</a>
-        <a href="#" class="hover:bg-gray-200 p-2 rounded">Users</a>
-        <a href="#" class="hover:bg-gray-200 p-2 rounded">Diets</a>
-        <a href="#" class="hover:bg-gray-200 p-2 rounded">Meals</a>
-        <a href="#" class="hover:bg-gray-200 p-2 rounded">Reports</a>
-        <a href="#" class="hover:bg-gray-200 p-2 rounded">Admin Tools</a>
-      </nav>
-      <div class="p-6 space-y-2 mt-auto">
-        <button class="px-4 py-2 bg-green-500 text-white rounded-md text-sm">Export CSV</button>
-        <button class="px-4 py-2 bg-red-500 text-white rounded-md text-sm">Reset Data</button>
-      </div>
-    </aside>
-
+    
+    
     <!-- Main Panel -->
     <main class="flex-1 p-8">
       <h2 class="text-2xl font-bold mb-2">Reports</h2>
@@ -55,6 +38,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  layout: "admin"
+})
 import { ref } from 'vue'
 
 const reports = ref([
