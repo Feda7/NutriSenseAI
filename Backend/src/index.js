@@ -303,3 +303,54 @@ const PORT = 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });
+
+// =============================
+// ✅ Add Meal
+// =============================
+app.post('/api/meal', async (req, res) => {
+  const { userId, mealType, totalCalories, details } = req.body;
+
+  try {
+    const [result] = await db.promise().query(
+      `INSERT INTO Meal (UserID, MealTime, Date, TotalCalories, Details)
+       VALUES (?, ?, NOW(), ?, ?)`,
+      [
+        userId,
+        mealType === 'breakfast' ? '08:00:00' :
+        mealType === 'lunch' ? '13:00:00' :
+        mealType === 'dinner' ? '19:00:00' : '16:00:00',
+        totalCalories,
+        details
+      ]
+    );
+
+    res.status(201).json({ mealId: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+app.get('/api/meal', (req, res) => {
+  res.json({ ok: true, message: 'API is working 🎉' });
+});
+
+// =============================
+// ✅ Add Fooditem
+// =============================
+
+app.post('/api/meal/item', async (req, res) => {
+  const { mealId, foodItemId, quantity, totalCalories, name } = req.body;
+
+  try {
+    await db.promise().query(
+      `INSERT INTO Contains (MealID, FoodItemID, Quantity, TotalCalories, Name)
+       VALUES (?, ?, ?, ?, ?)`,
+      [mealId, foodItemId, quantity, totalCalories, name]
+    );
+
+    res.status(201).json({ message: 'Food item added to meal' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
