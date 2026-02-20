@@ -77,30 +77,7 @@
       </div>
     </div>
 
-    <div class="border-t pt-4 space-y-3">
-      <h3 class="text-lg font-semibold text-gray-800">About Me</h3>
-      <textarea
-        v-model="localUser.about"
-        :readonly="!editing"
-        class="w-full border rounded-lg px-3 py-2 text-gray-600 resize-none"
-      ></textarea>
-
-      <h3 class="text-lg font-semibold text-gray-800">
-        Why I Want to Get in Shape
-      </h3>
-      <textarea
-        v-model="localUser.reason"
-        :readonly="!editing"
-        class="w-full border rounded-lg px-3 py-2 text-gray-600 resize-none"
-      ></textarea>
-
-      <h3 class="text-lg font-semibold text-gray-800">My Inspirations</h3>
-      <textarea
-        v-model="localUser.inspiration"
-        :readonly="!editing"
-        class="w-full border rounded-lg px-3 py-2 text-gray-600 resize-none"
-      ></textarea>
-    </div>
+    
   </div>
 </template>
 
@@ -129,24 +106,61 @@ const isFormValid = computed(() => {
     u.name &&
     u.age &&
     u.height &&
-    u.weight &&
-    u.about &&
-    u.reason &&
-    u.inspiration
+    u.weight 
   )
 })
 
-function toggleEdit() {
+async function toggleEdit() {
   if (editing.value) {
     if (!isFormValid.value) {
       alert('⚠ Please fill all fields before saving.')
       return
     }
-    emit('updateUser', localUser.value)
-    alert('✅ Profile updated successfully!')
+
+    const userId = localStorage.getItem('userId')
+
+    // نفصل الاسم الأول والأخير
+    const nameParts = localUser.value.name.split(' ')
+    const firstName = nameParts[0]
+    const lastName = nameParts.slice(1).join(' ') || ''
+
+    // نحول العمر إلى تاريخ ميلاد تقريبي
+    const currentYear = new Date().getFullYear()
+    const birthYear = currentYear - localUser.value.age
+    const birthDate = `${birthYear}-01-01`
+
+    try {
+      await $fetch(`http://localhost:5000/api/user/${userId}`, {
+        method: 'PUT',
+        body: {
+          FirstName: firstName,
+          LastName: lastName,
+          BirthDate: birthDate,
+          Height: localUser.value.height,
+          CurrentWeight: localUser.value.weight,
+          DesiredWeight: props.user.DesiredWeight,
+          Gender: props.user.Gender,
+          GoalID: props.user.GoalID,
+          ActiveLevelID: props.user.ActiveLevelID,
+          Email: props.user.Email,
+          Password: props.user.Password,
+          Diseases: props.user.DiseaseIDs || []
+        }
+      })
+
+      alert('✅ Profile updated successfully!')
+      location.reload()
+
+    } catch (err) {
+      console.error(err)
+      alert('❌ Failed to update')
+      return
+    }
   }
+
   editing.value = !editing.value
 }
+
 
 function choosePhoto() {
   document.getElementById('photoInput').click()
