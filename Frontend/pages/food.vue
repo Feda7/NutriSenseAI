@@ -49,47 +49,51 @@ const userId = currentUser.value?.id || 1
 // ==============================
 async function addFoodToMeal(mealName, foodItem) {
   try {
-    // 1️⃣ إنشاء الوجبة في جدول Meal
+    console.log('🧪 foodItem:', foodItem)
+    console.log('🧪 userId:', userId)
+
+    // 1️⃣ تحديث الواجهة مباشرة
+    meals.value[mealName].push(foodItem)
+    consumed.value += foodItem.calories
+    remaining.value = userCalories.value - consumed.value
+
+    // 2️⃣ إنشاء Meal في الباك إند
     const mealRes = await fetch('http://localhost:5000/api/meal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: userId,
-        mealType: mealName,        // breakfast / lunch / dinner / snacks
+        mealType: mealName,
         totalCalories: foodItem.calories,
         details: foodItem.name
       })
-    });
+    })
 
-    const mealData = await mealRes.json();
-    const mealId = mealData.mealId;
-    console.log('Meal created:', mealId);
+    const mealData = await mealRes.json()
+    console.log('Meal response:', mealData)
 
-    if (!mealId) throw new Error('Meal creation failed');
+    if (!mealData.mealId) {
+      throw new Error('Meal not created in DB')
+    }
 
-    // 2️⃣ إضافة الصنف داخل جدول Contains
+    // 3️⃣ إضافة الصنف داخل Contains
     const containsRes = await fetch('http://localhost:5000/api/meal/item', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        mealId: mealId,
-        foodItemId: foodItem.id,    // لازم FoodItem موجود في جدول FoodItem
+        mealId: mealData.mealId,
+        foodItemId: 1,     // مؤقت للتجربة
         quantity: 1,
         totalCalories: foodItem.calories,
         name: foodItem.name
       })
-    });
+    })
 
-    const containsData = await containsRes.json();
-    console.log('Food item added to meal:', containsData);
-
-    // 3️⃣ تحديث الحالة في الواجهة
-    meals.value[mealName].push(foodItem)
-    consumed.value += foodItem.calories
-    remaining.value = userCalories.value - consumed.value
+    const containsData = await containsRes.json()
+    console.log('Contains response:', containsData)
 
   } catch (err) {
-    console.error('Error adding food to meal:', err);
+    console.error('❌ Error adding food to meal:', err)
   }
 }
 
