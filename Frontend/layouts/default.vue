@@ -12,6 +12,6 @@ const route = useRoute();
 
 // hide navbar only on homepage
 const hide = computed(() => 
-  route.path === "/" || route.path === "/SectionWelcome" || route.path === "/register" || route.path === "/register2" || route.path === "/Account" || route.path === "/Admin"
+  route.path === "/" || route.path === "/SectionWelcome" || route.path === "/register"  || route.path === "/forgot-password"  || route.path === "/reset-password" || route.path === "/register2" || route.path === "/Account" || route.path === "/Admin"
 );
 </script>
