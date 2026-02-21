@@ -14,6 +14,7 @@
     <!-- Meals Section -->
     <MealsSection
     :meals="meals"
+    :diseases="diseases"
     @addFood="addFoodToMeal"
     @uploadImage="analyzeImageForMeal"
     />
@@ -25,6 +26,8 @@
 <script setup>
 
 import { ref } from 'vue';
+
+const diseases=ref([])
 
 /* USER DAILY CALORIES */
 const userCalories = ref(1900)
