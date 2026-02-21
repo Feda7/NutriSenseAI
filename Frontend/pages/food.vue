@@ -14,6 +14,7 @@
     <!-- Meals Section -->
     <MealsSection
     :meals="meals"
+    :diseases="diseases"
     @addFood="addFoodToMeal"
     @uploadImage="analyzeImageForMeal"
     />
@@ -23,6 +24,10 @@
 </template>
 
 <script setup>
+
+import { ref } from 'vue';
+
+const diseases=ref([])
 
 /* USER DAILY CALORIES */
 const userCalories = ref(1900)
@@ -39,26 +44,76 @@ dinner: [],
 snacks: [],
 })
 
-/* ADD FOOD MANUALLY */
-function addFoodToMeal(mealName, foodItem) {
-meals.value[mealName].push(foodItem)
-consumed.value += foodItem.calories
-remaining.value = userCalories.value - consumed.value
+const currentUser = useState('currentUser') 
+const userId = currentUser.value?.id || 1
+
+// ==============================
+// ✅ Add Meal
+// ==============================
+async function addFoodToMeal(mealName, foodItem) {
+  try {
+    console.log('🧪 foodItem:', foodItem)
+    console.log('🧪 userId:', userId)
+
+    // 1️⃣ تحديث الواجهة مباشرة
+    meals.value[mealName].push(foodItem)
+    consumed.value += foodItem.calories
+    remaining.value = userCalories.value - consumed.value
+
+    // 2️⃣ إنشاء Meal في الباك إند
+    const mealRes = await fetch('http://localhost:5000/api/meal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        mealType: mealName,
+        totalCalories: foodItem.calories,
+        details: foodItem.name
+      })
+    })
+
+    const mealData = await mealRes.json()
+    console.log('Meal response:', mealData)
+
+    if (!mealData.mealId) {
+      throw new Error('Meal not created in DB')
+    }
+
+    // 3️⃣ إضافة الصنف داخل Contains
+    const containsRes = await fetch('http://localhost:5000/api/meal/item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mealId: mealData.mealId,
+        foodItemId: 1,     // مؤقت للتجربة
+        quantity: 1,
+        totalCalories: foodItem.calories,
+        name: foodItem.name
+      })
+    })
+
+    const containsData = await containsRes.json()
+    console.log('Contains response:', containsData)
+
+  } catch (err) {
+    console.error('❌ Error adding food to meal:', err)
+  }
 }
 
-/* ADD VIA IMAGE + AI */
-function analyzeImageForMeal(mealName, imageFile) {
-  // هنا بعدين تربطون API الذكاء الاصطناعي
-  // الآن نحط بيانات تجريبية
-    const aiResult = {
+// ==============================
+// ✅ Add Meal + AI
+// ==============================
+async function analyzeImageForMeal(mealName, imageFile) {
+  // مثال نتيجة AI مؤقتة
+  const aiResult = {
+    id: 1,             // لاحقاً تحصلين ID الحقيقي من جدول FoodItem
     name: 'Chicken Salad',
     calories: 350,
     protein: 22,
     carbs: 18,
     fat: 12
-    }
-  meals.value[mealName].push(aiResult)
-  consumed.value += aiResult.calories
-  remaining.value = userCalories.value - consumed.value
+  }
+
+  await addFoodToMeal(mealName, aiResult)
 }
 </script>

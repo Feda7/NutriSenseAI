@@ -45,7 +45,20 @@
 <script setup>
 import MealCard from "./MealCard.vue";
 
-const props = defineProps(["meals", "dietType"]);
+const props = defineProps({
+  meals: {
+    type: Object,
+    required: true
+  },
+  dietType: {
+    type: [String, Object], // حسب ما تستخدمونه
+    default: null
+  },
+  diseases: {
+    type: Array,
+    default: () => []
+  }
+});
 const emit = defineEmits(["addFood", "uploadImage"]);
 
 function addFood(meal, food) {
