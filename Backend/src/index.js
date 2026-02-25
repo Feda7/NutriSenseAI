@@ -418,9 +418,6 @@ const diet = dietRows[0];
   }
 });
 
-
-
-
 // =============================
 // ✅ Login (لم يتم التعديل عليه)
 // =============================
@@ -450,7 +447,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-
 // =============================
 // 🚀 Server
 // =============================
@@ -460,53 +456,240 @@ app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });
 
-// =============================
-// ✅ Add Meal
-// =============================
+// ==========================================
+// ✅ CREATE MEAL
+// ==========================================
 app.post('/api/meal', async (req, res) => {
-  const { userId, mealType, totalCalories, details } = req.body;
+  const { userId, mealType } = req.body;
 
   try {
-    const [result] = await db.promise().query(
-      `INSERT INTO Meal (UserID, MealTime, Date, TotalCalories, Details)
-       VALUES (?, ?, NOW(), ?, ?)`,
-      [
-        userId,
-        mealType === 'breakfast' ? '08:00:00' :
-        mealType === 'lunch' ? '13:00:00' :
-        mealType === 'dinner' ? '19:00:00' : '16:00:00',
-        totalCalories,
-        details
-      ]
+
+    const mealTime =
+      mealType === 'breakfast' ? '08:00:00' :
+      mealType === 'lunch'     ? '13:00:00' :
+      mealType === 'dinner'    ? '19:00:00' : '16:00:00';
+
+    const [result] = await db.query(
+      `INSERT INTO Meal (UserID, MealTime, Date, TotalCalories)
+        VALUES (?, ?, NOW(), 0)`,
+      [userId, mealTime]
     );
 
-    res.status(201).json({ mealId: result.insertId });
+    res.status(201).json({
+      message: "Meal created successfully",
+      mealId: result.insertId
+    });
+
   } catch (err) {
-    console.error(err);
+    console.error("Create Meal Error:", err);
     res.status(500).json({ error: 'Database error' });
   }
 });
-app.get('/api/meal', (req, res) => {
-  res.json({ ok: true, message: 'API is working 🎉' });
-});
 
-// =============================
-// ✅ Add Fooditem
-// =============================
-
+// ==========================================
+// ✅ ADD FOOD TO MEAL (WITH INCREMENT)
+// ==========================================
 app.post('/api/meal/item', async (req, res) => {
-  const { mealId, foodItemId, quantity, totalCalories, name } = req.body;
+  const { mealId, foodItemId, quantity, unitId } = req.body;
 
   try {
-    await db.promise().query(
-      `INSERT INTO Contains (MealID, FoodItemID, Quantity, TotalCalories, Name)
-       VALUES (?, ?, ?, ?, ?)`,
-      [mealId, foodItemId, quantity, totalCalories, name]
+
+    const [foodRows] = await db.query(
+      "SELECT Calories FROM FoodItem WHERE FoodItemID = ?",
+      [foodItemId]
     );
 
-    res.status(201).json({ message: 'Food item added to meal' });
+    if (!foodRows.length) {
+      return res.status(404).json({ error: "Food not found" });
+    }
+
+    const caloriesPer100g = foodRows[0].Calories;
+
+    const [unitRows] = await db.query(
+      "SELECT ToGramFact FROM ServingUnit WHERE UnitID = ?",
+      [unitId]
+    );
+
+    const toGram = unitRows[0].ToGramFact;
+
+    const gramAmount = quantity * toGram;
+    const totalCalories = (gramAmount / 100) * caloriesPer100g;
+
+    // 🔥 هل العنصر موجود مسبقاً؟
+    const [existing] = await db.query(
+      `SELECT * FROM MealFoodItem 
+        WHERE MealID = ? AND FoodItemID = ? AND UnitID = ?`,
+      [mealId, foodItemId, unitId]
+    );
+
+    if (existing.length > 0) {
+
+      await db.query(
+        `UPDATE MealFoodItem
+          SET Quantity = Quantity + ?,
+              TotalCalories = TotalCalories + ?
+          WHERE MealID = ? AND FoodItemID = ? AND UnitID = ?`,
+        [quantity, totalCalories, mealId, foodItemId, unitId]
+      );
+
+    } else {
+
+      await db.query(
+        `INSERT INTO MealFoodItem 
+          (MealID, FoodItemID, Quantity, UnitID, TotalCalories)
+          VALUES (?, ?, ?, ?, ?)`,
+        [mealId, foodItemId, quantity, unitId, totalCalories]
+      );
+    }
+
+    await db.query(
+      `UPDATE Meal 
+        SET TotalCalories = TotalCalories + ?
+        WHERE MealID = ?`,
+      [totalCalories, mealId]
+    );
+
+    res.status(201).json({
+      message: "Food added successfully",
+      addedCalories: totalCalories
+    });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("Add Food Error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// ==========================================
+// ✅ GET MEAL WITH ITEMS (FIXED CASE BUG)
+// ==========================================
+app.get('/api/meal/:mealId', async (req, res) => {
+  const { mealId } = req.params;
+
+  try {
+
+    const [mealRows] = await db.query(
+      "SELECT * FROM Meal WHERE MealID = ?",
+      [mealId]
+    );
+
+    if (!mealRows.length) {
+      return res.status(404).json({ error: "Meal not found" });
+    }
+
+    const [items] = await db.query(
+      `SELECT 
+          f.Name AS name,
+          mfi.Quantity AS quantity,
+          su.ShortCode AS unit,
+          mfi.TotalCalories AS totalCalories,
+          f.Protein AS protein,
+          f.Carbs AS carbs,
+          f.Fat AS fat
+        FROM MealFoodItem mfi
+        JOIN FoodItem f ON mfi.FoodItemID = f.FoodItemID
+        JOIN ServingUnit su ON mfi.UnitID = su.UnitID
+        WHERE mfi.MealID = ?`,
+      [mealId]
+    );
+
+    res.json({
+      meal: mealRows[0],
+      items: items
+    });
+
+  } catch (err) {
+    console.error("Get Meal Error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+// ✅ GET Today's Meals for a User
+app.get('/api/meal/today/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    // نجيب كل الوجبات لليوم الحالي
+    const [meals] = await db.query(
+      `SELECT MealID, MealTime, TotalCalories 
+        FROM Meal 
+        WHERE UserID = ? AND Date = CURDATE()`,
+      [userId]
+    );
+
+    // نجيب العناصر لكل وجبة
+    const mealData = await Promise.all(meals.map(async meal => {
+      const [items] = await db.query(
+        `SELECT 
+            f.Name AS Name,
+            mfi.Quantity,
+            su.ShortCode,
+            mfi.TotalCalories,
+            f.Protein,
+            f.Carbs,
+            f.Fat
+          FROM MealFoodItem mfi
+          JOIN FoodItem f ON mfi.FoodItemID = f.FoodItemID
+          JOIN ServingUnit su ON mfi.UnitID = su.UnitID
+          WHERE mfi.MealID = ?`,
+        [meal.MealID]
+      );
+      return {
+        mealId: meal.MealID,
+        mealType: meal.MealType,
+        items
+      };
+    }));
+
+    res.json(mealData);
+  } catch (err) {
+    console.error("Get Today's Meals Error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+// ==========================================
+// ✅ GET ALL FOOD ITEMS
+// ==========================================
+app.get('/api/food', async (req, res) => {
+  try {
+
+    const [rows] = await db.query(
+      `SELECT 
+          FoodItemID,
+          Name,
+          Calories,
+          Protein,
+          Carbs,
+          Fat
+        FROM FoodItem`
+    );
+
+    res.json(rows);
+
+  } catch (err) {
+    console.error("Get Food Error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+// ==========================================
+// ✅ SEARCH FOOD
+// ==========================================
+app.get('/api/food/search', async (req, res) => {
+  const { q } = req.query;
+
+  try {
+
+    if (!q) return res.json([]);
+
+    const [rows] = await db.query(
+      `SELECT FoodItemID, Name, Calories, Protein, Carbs, Fat
+        FROM FoodItem
+        WHERE Name LIKE ?`,
+      [`${q}%`]
+    );
+
+    res.json(rows);
+
+  } catch (err) {
+    console.error("Search Error:", err);
+    res.status(500).json({ error: "Database error" });
   }
 });

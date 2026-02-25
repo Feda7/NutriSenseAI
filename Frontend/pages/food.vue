@@ -25,95 +25,169 @@
 
 <script setup>
 
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue'
+import { useState } from '#app'
 
-const diseases=ref([])
+const currentUser = useState('currentUser')
+const diseases = ref([])
 
 /* USER DAILY CALORIES */
-const userCalories = ref(1900)
-const consumed = ref(650)
-const remaining = ref(userCalories.value - consumed.value)
-const foodData = useState("foodData");
+const userCalories = ref(0)
+const consumed = ref(0)
+const remaining = ref(0)
 
+function recalcSummary() {
+  let total = 0
 
-/* MEALS DATA */
+  Object.values(meals.value).forEach(mealArray => {
+    mealArray.forEach(item => {
+      total += Number(item.totalCalories || 0)
+    })
+  })
+
+  consumed.value = total
+  remaining.value = userCalories.value - total
+}
+/* نخليهم arrays مو null عشان ما ينهار الرندر */
 const meals = ref({
-breakfast: [],
-lunch: [],
-dinner: [],
-snacks: [],
+  breakfast: [],
+  lunch: [],
+  dinner: [],
+  snacks: [],
 })
 
-const currentUser = useState('currentUser') 
-const userId = currentUser.value?.id || 1
+/* نخزن mealIds عشان ما ننشئ كل مرة meal جديد */
+const mealIds = ref({
+  breakfast: null,
+  lunch: null,
+  dinner: null,
+  snacks: null,
+})
+
+function getUserId() {
+  return currentUser.value?.id
+}
+
+/* ==============================
+    ✅ عند فتح الصفحة نجيب وجبات اليوم
+   ============================== */
+onMounted(async () => {
+
+  const userId = getUserId()
+  if (!userId) return
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/meal/today/${userId}`)
+
+    if (!res.ok) return
+
+    const data = await res.json()
+
+    data.forEach(meal => {
+      mealIds.value[meal.mealType] = meal.mealId
+      meals.value[meal.mealType] = meal.items || []
+      recalcSummary()
+    })
+
+  } catch (err) {
+    console.error("Load meals error:", err)
+  }
+
+})
+
 
 // ==============================
-// ✅ Add Meal
+// ✅ Add Food To Meal (نسخة بروفيشنل)
 // ==============================
 async function addFoodToMeal(mealName, foodItem) {
   try {
-    console.log('🧪 foodItem:', foodItem)
-    console.log('🧪 userId:', userId)
 
-    // 1️⃣ تحديث الواجهة مباشرة
-    meals.value[mealName].push(foodItem)
-    consumed.value += foodItem.calories
-    remaining.value = userCalories.value - consumed.value
-
-    // 2️⃣ إنشاء Meal في الباك إند
-    const mealRes = await fetch('http://localhost:5000/api/meal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: userId,
-        mealType: mealName,
-        totalCalories: foodItem.calories,
-        details: foodItem.name
-      })
-    })
-
-    const mealData = await mealRes.json()
-    console.log('Meal response:', mealData)
-
-    if (!mealData.mealId) {
-      throw new Error('Meal not created in DB')
+    const userId = getUserId()
+    if (!userId) {
+      console.error("User not logged in")
+      return
     }
 
-    // 3️⃣ إضافة الصنف داخل Contains
-    const containsRes = await fetch('http://localhost:5000/api/meal/item', {
+    if (!foodItem.foodItemId) {
+      console.error("FoodItemID missing ❌")
+      return
+    }
+
+    let mealId = mealIds.value[mealName]
+
+    // 🔥 إذا ما فيه meal مسبقاً ننشئه مرة واحدة فقط
+    if (!mealId) {
+
+      const mealRes = await fetch('http://localhost:5000/api/meal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          mealType: mealName
+        })
+      })
+
+      if (!mealRes.ok) throw new Error("Meal creation failed")
+
+      const mealData = await mealRes.json()
+
+      if (!mealData.mealId) {
+        throw new Error("Meal ID not returned")
+      }
+
+      mealId = mealData.mealId
+      mealIds.value[mealName] = mealId
+    }
+
+    // 🔥 نضيف العنصر فقط
+    const foodRes = await fetch('http://localhost:5000/api/meal/item', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        mealId: mealData.mealId,
-        foodItemId: 1,     // مؤقت للتجربة
-        quantity: 1,
-        totalCalories: foodItem.calories,
-        name: foodItem.name
+        mealId: mealId,
+        foodItemId: foodItem.foodItemId,
+        quantity: foodItem.quantity || 1,
+        unitId: foodItem.unitId || 1
       })
     })
 
-    const containsData = await containsRes.json()
-    console.log('Contains response:', containsData)
+    if (!foodRes.ok) throw new Error("Add food failed")
+
+    const foodResponse = await foodRes.json()
+
+    // 🔥 نجيب الوجبة بعد التحديث
+    const updatedMeal = await fetch(
+      `http://localhost:5000/api/meal/${mealId}`
+    )
+
+    if (!updatedMeal.ok) throw new Error("Fetch meal failed")
+
+    const updatedData = await updatedMeal.json()
+
+    meals.value[mealName] = updatedData.items || []
+
+    // تحديث السعرات
+    recalcSummary()
 
   } catch (err) {
-    console.error('❌ Error adding food to meal:', err)
+    console.error("Error:", err)
   }
 }
+
 
 // ==============================
 // ✅ Add Meal + AI
 // ==============================
 async function analyzeImageForMeal(mealName, imageFile) {
-  // مثال نتيجة AI مؤقتة
+
+  // ⚠️ هذا مثال مؤقت — لازم لاحقاً يرجع ID حقيقي من السيرفر
   const aiResult = {
-    id: 1,             // لاحقاً تحصلين ID الحقيقي من جدول FoodItem
-    name: 'Chicken Salad',
-    calories: 350,
-    protein: 22,
-    carbs: 18,
-    fat: 12
+    foodItemId: 1,
+    quantity: 1,
+    unitId: 1
   }
 
   await addFoodToMeal(mealName, aiResult)
 }
+
 </script>

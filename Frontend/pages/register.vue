@@ -70,6 +70,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useState } from '#app'
 
 const router = useRouter()
 const modelValue = defineModel()
@@ -103,8 +104,12 @@ const handleLogin = async () => {
 
     if (response.ok) {
     // خزن الـ userId في localStorage
-    localStorage.setItem('userId', result.user.id)
+    // نحفظ بيانات المستخدم كاملة
+    localStorage.setItem('user', JSON.stringify(result.user))
 
+    // نخزنها في useState عشان الصفحات الثانية تقرأها
+    const currentUser = useState('currentUser')
+    currentUser.value = result.user
     alert('Logged in successfully!')
     router.push('/food')
 }
