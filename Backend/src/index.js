@@ -7,7 +7,95 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(express.json());
+// =============================================
+// خاصية استعادة كلمة المرور - إعداد المكتبات
+// =============================================
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
+// 1. مسار طلب رابط استعادة كلمة المرور
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // التأكد من وجود المستخدم في الجدول
+    const [rows] = await db.query("SELECT * FROM `user` WHERE Email = ?", [email]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'الإيميل غير موجود في النظام' });
+    }
+
+    // إنشاء رمز (Token) عشوائي ووقت انتهاء (ساعة واحدة من الآن)
+    const token = crypto.randomBytes(20).toString('hex');
+    const expires = Date.now() + 3600000; 
+
+    // تحديث الجدول بالرموز الجديدة
+    await db.query(
+      "UPDATE `user` SET resetPasswordToken = ?, resetPasswordExpires = ? WHERE Email = ?", 
+      [token, expires, email]
+    );
+
+    // إعدادات إرسال الإيميل
+    
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'dhfc397@gmail.com', // إيميلك الحقيقي
+        pass: 'wmod smtl pati kfjp'    // كلمة سر التطبيقات (16 حرفاً)
+      },
+      // ✅ أضيفي هذا الجزء هنا لحل مشكلة الـ Certificate
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const mailOptions = {
+      to: email,
+      subject: 'Reset Your Password - NutriSense',
+      text: `لقد طلبت إعادة تعيين كلمة المرور. يرجى الضغط على الرابط التالي للبدء:\n\n 
+      http://localhost:3000/reset-password?token=${token}\n\n
+      هذا الرابط صالح لمدة ساعة واحدة فقط.`
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: 'تم إرسال رابط الاستعادة إلى بريدك بنجاح' });
+
+  } catch (err) {
+    console.error('❌ Forgot Password Error:', err);
+    res.status(500).json({ error: 'حدث خطأ في الخادم أثناء إرسال الإيميل' });
+  }
+});
+
+// 2. مسار استقبال كلمة المرور الجديدة وتحديثها
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  const currentTime = Date.now();
+
+  try {
+    // البحث عن المستخدم بالرمز والتأكد أن الوقت لم ينتهِ
+    const [rows] = await db.query(
+      "SELECT * FROM `user` WHERE resetPasswordToken = ? AND resetPasswordExpires > ?", 
+      [token, currentTime]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'الرابط غير صالح أو انتهت صلاحيته' });
+    }
+
+    // تحديث كلمة المرور وتصفير حقول الرموز المؤقتة
+    await db.query(
+      "UPDATE `user` SET Password = ?, resetPasswordToken = NULL, resetPasswordExpires = NULL WHERE resetPasswordToken = ?", 
+      [newPassword, token]
+    );
+
+    res.status(200).json({ message: 'تم تحديث كلمة المرور بنجاح ✅' });
+
+  } catch (err) {
+    console.error('❌ Reset Password Error:', err);
+    res.status(500).json({ error: 'حدث خطأ أثناء تحديث كلمة المرور' });
+  }
+});
+// =============================================
 // Test route
 app.get('/', (req, res) => {
   res.send('API is running');

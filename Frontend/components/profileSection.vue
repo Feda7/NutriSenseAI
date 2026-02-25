@@ -45,16 +45,23 @@
           class="border rounded-lg px-3 py-1 w-full"
         />
       </div>
-
       <div>
-        <label class="font-medium text-gray-800">Age:</label>
+        <label class="font-medium text-gray-800">Birth Date:</label>
         <input
-          v-model="localUser.age"
-          type="number"
+          v-model="localUser.birthDate"
+          type="date"
           :readonly="!editing"
+          :max="new Date().toISOString().split('T')[0]"
           class="border rounded-lg px-3 py-1 w-full"
         />
       </div>
+
+      <div v-if="calculatedAge">
+        <label class="font-medium text-gray-800">Calculated Age:</label>
+        <p class="text-green-700 font-bold px-3">{{ calculatedAge }} Years old</p>
+      </div>
+
+      
 
       <div>
         <label class="font-medium text-gray-800">Height (cm):</label>
@@ -90,11 +97,43 @@ const emit = defineEmits(['updateUser'])
 const localUser = ref({})
 const editing = ref(false)
 
+// دالة لحساب العمر تلقائياً بمجرد تغيير تاريخ الميلاد
+const calculatedAge = computed(() => {
+  if (!localUser.value.birthDate) return null;
+  const birth = new Date(localUser.value.birthDate);
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age > 0 ? age : 0;
+});
+
 watch(
   () => props.user,
   (newUser) => {
     if (newUser) {
-      localUser.value = { ...newUser }
+      let finalDate = '';
+
+      if (newUser.BirthDate) {
+        // 1. تحويل القيمة القادمة من الداتا بيس لكائن تاريخ
+        const d = new Date(newUser.BirthDate);
+        
+        // 2. الحل القوي: إذا وجدنا أن الساعة أقل من 12 (يعني المتصفح خصهما) 
+        // نقوم بإضافة 12 ساعة يدوياً لضمان بقاء التاريخ في نفس اليوم الصحيح
+        d.setHours(d.getHours() + 12);
+        
+        // 3. تحويلها للصيغة النصية المطلوبة لـ input date
+        finalDate = d.toISOString().split('T')[0];
+      }
+
+      localUser.value = { 
+        ...newUser,
+        name: `${newUser.FirstName || ''} ${newUser.LastName || ''}`.trim(),
+        birthDate: finalDate, 
+        photo: newUser.photo || localStorage.getItem(`userPhoto_${localStorage.getItem('userId')}`)
+      }
     }
   },
   { immediate: true }
@@ -104,7 +143,7 @@ const isFormValid = computed(() => {
   return (
     u.photo &&
     u.name &&
-    u.age &&
+    u.birthDate&&
     u.height &&
     u.weight 
   )
@@ -118,16 +157,12 @@ async function toggleEdit() {
     }
 
     const userId = localStorage.getItem('userId')
-
-    // نفصل الاسم الأول والأخير
     const nameParts = localUser.value.name.split(' ')
     const firstName = nameParts[0]
     const lastName = nameParts.slice(1).join(' ') || ''
 
-    // نحول العمر إلى تاريخ ميلاد تقريبي
-    const currentYear = new Date().getFullYear()
-    const birthYear = currentYear - localUser.value.age
-    const birthDate = `${birthYear}-01-01`
+    // التأكد من أن التاريخ المختار موجود ولا يتغير وقت الإرسال
+    const selectedBirthDate = localUser.value.birthDate;
 
     try {
       await $fetch(`http://localhost:5000/api/user/${userId}`, {
@@ -135,7 +170,7 @@ async function toggleEdit() {
         body: {
           FirstName: firstName,
           LastName: lastName,
-          BirthDate: birthDate,
+          BirthDate: localUser.value.birthDate,
           Height: localUser.value.height,
           CurrentWeight: localUser.value.weight,
           DesiredWeight: props.user.DesiredWeight,
@@ -149,17 +184,21 @@ async function toggleEdit() {
       })
 
       alert('✅ Profile updated successfully!')
-      location.reload()
+      // بدلاً من reload الكامل، نكتفي بإيقاف وضع التعديل لضمان ثبات البيانات
+      editing.value = false; 
+      
+      // إذا كان ولابد من التحديث، ننتظر قليلاً
+      // location.reload() 
 
     } catch (err) {
-      console.error(err)
+      console.error("Update Error:", err)
       alert('❌ Failed to update')
       return
     }
+  } else {
+    editing.value = true
   }
-
-  editing.value = !editing.value
-}
+} 
 
 
 function choosePhoto() {

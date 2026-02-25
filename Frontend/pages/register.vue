@@ -31,6 +31,11 @@
             @click="showPassword = !showPassword"
             class="absolute right-3 top-9 text-gray-500"
           ></button>
+          <div class="text-right mt-1">
+                <NuxtLink to="/forgot-password" class="text-sm text-green-600 hover:underline">
+                  Forgot Password?
+                </NuxtLink>
+              </div>
         </div>
 
         
