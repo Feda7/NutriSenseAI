@@ -47,8 +47,10 @@
         </div>
         <input type="number" v-model="quantity" class="inputt" placeholder="Quantity" />
         <select v-model="unitId" class="inputt">
-        <option value="1">g</option>
-        <option value="2">piece</option>
+            <option v-for="unit in units" :key="unit.unitId" :value="unit.unitId"
+            >
+                {{ unit.shortCode }}
+            </option>
         </select>
         <button
             @click="addFood"
@@ -86,21 +88,38 @@
 
 <script setup>
 import { ref } from "vue";
+import { onMounted } from "vue";
 
 const props = defineProps(["title", "items", "mealName", "dietType", "diseases"]);
 const emit = defineEmits(["addFood", "uploadImage"]);
-
 const manualInput = ref(false);
 const recommendation = ref("");
-
 /* 🔎 Search State */
 const search = ref("");
 const results = ref([]);
 const selectedFood = ref(null);
-
 /* ➕ Quantity + Unit (جديدة) */
 const quantity = ref(1);
 const unitId = ref(1);
+const units = ref([])
+
+onMounted(() => {
+    loadUnits();
+});
+
+async function loadUnits() {
+    try {
+        const response = await fetch("http://localhost:3000/api/units")
+        units.value = await response.json()
+
+        if (units.value.length > 0) {
+        unitId.value = units.value[0].unitId
+        }
+
+    } catch (error) {
+        console.error("Failed to load units", error)
+    }
+}
 
 /* --- SEARCH FUNCTION --- */
 async function searchFood() {
@@ -117,10 +136,24 @@ async function searchFood() {
 }
 
 /* --- Select Food --- */
-function selectFood(item) {
+async function selectFood(item) {
     selectedFood.value = item;
     search.value = item.Name;
     results.value = [];
+
+    try {
+        const res = await fetch(
+        `http://localhost:5000/api/food/${item.FoodItemID}/units`
+        );
+        units.value = await res.json();
+
+        if (units.value.length > 0) {
+        unitId.value = units.value[0].unitId;
+        }
+
+    } catch (error) {
+        console.error("Failed to load food units", error);
+    }
 }
 
 /* --- Save Food --- */
@@ -255,4 +288,5 @@ function getDiseaseAlerts(food, diseases = []) {
 
     return alerts;
 }
+
 </script>

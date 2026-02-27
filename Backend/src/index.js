@@ -594,11 +594,17 @@ app.post('/api/meal/item', async (req, res) => {
     const caloriesPer100g = foodRows[0].Calories;
 
     const [unitRows] = await db.query(
-      "SELECT ToGramFact FROM ServingUnit WHERE UnitID = ?",
-      [unitId]
-    );
+    `SELECT ToGramFact 
+    FROM FoodItemServingUnit 
+    WHERE FoodItemID = ? AND UnitID = ?`,
+  [foodItemId, unitId]
+);
 
-    const toGram = unitRows[0].ToGramFact;
+if (!unitRows.length) {
+  return res.status(400).json({ error: "Invalid unit for this food" });
+}
+
+const toGram = unitRows[0].ToGramFact;
 
     const gramAmount = quantity * toGram;
     const totalCalories = (gramAmount / 100) * caloriesPer100g;
@@ -722,7 +728,7 @@ app.get('/api/meal/today/:userId', async (req, res) => {
       );
       return {
         mealId: meal.MealID,
-        mealType: meal.MealType,
+        mealTime: meal.MealTime,
         items
       };
     }));
@@ -778,6 +784,53 @@ app.get('/api/food/search', async (req, res) => {
 
   } catch (err) {
     console.error("Search Error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+// ==========================================
+// ✅ GET SERVING UNITS
+// ==========================================
+app.get('/api/units', async (req, res) => {
+  try {
+
+    const [units] = await db.query(
+      `SELECT 
+          UnitID AS unitId,
+          UnitName AS name,
+          ShortCode AS shortCode
+        FROM ServingUnit`
+    );
+
+    res.json(units);
+
+  } catch (err) {
+    console.error("Get Units Error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+// ==========================================
+// ✅ GET UNITS FOR SPECIFIC FOOD
+// ==========================================
+app.get('/api/food/:foodId/units', async (req, res) => {
+  const { foodId } = req.params;
+
+  try {
+    const [units] = await db.query(
+        `SELECT 
+            su.UnitID AS unitId,
+            su.UnitName AS name,
+            su.ShortCode AS shortCode,
+            fsu.ToGramFact AS toGram
+        FROM FoodItemServingUnit fsu
+        JOIN ServingUnit su ON fsu.UnitID = su.UnitID
+        WHERE fsu.FoodItemID = ?`,
+      [foodId]
+    );
+
+    res.json(units);
+
+  } catch (err) {
+    console.error("Get Food Units Error:", err);
     res.status(500).json({ error: "Database error" });
   }
 });

@@ -24,11 +24,37 @@
 </template>
 
 <script setup>
-
 import { ref, onMounted } from 'vue'
 import { useState } from '#app'
 
 const currentUser = useState('currentUser')
+
+onMounted(async () => {
+  const storedUser = localStorage.getItem('user')
+
+  if (storedUser) {
+    currentUser.value = JSON.parse(storedUser)
+  }
+
+  const userId = currentUser.value?.id
+
+  if (!userId) {
+    console.error("No user found")
+    return
+  }
+
+  try {
+    const response = await fetch(`http://localhost:5000/api/user/${userId}`)
+    const data = await response.json()
+
+    // 🔥 هنا الربط الحقيقي
+    userCalories.value = data.DailyCaloriesTarget || 0
+    remaining.value = userCalories.value - consumed.value
+
+  } catch (err) {
+    console.error("Failed to load user calories", err)
+  }
+})
 const diseases = ref([])
 
 /* USER DAILY CALORIES */
