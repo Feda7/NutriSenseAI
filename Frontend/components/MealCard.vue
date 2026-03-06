@@ -23,13 +23,35 @@
         </div>
         </div>
 
-        <!-- Manual Input -->
+        <!-- Manual Input (SEARCH VERSION) -->
         <div v-if="manualInput" class="mb-4 space-y-2">
-        <input v-model="food.name" placeholder="Food name" class="inputt" />
-        <input v-model.number="food.calories" placeholder="Calories" class="inputt" />
-        <input v-model.number="food.protein" placeholder="Protein" class="inputt" />
-        <input v-model.number="food.carbs" placeholder="Carbs" class="inputt" />
-        <input v-model.number="food.fat" placeholder="Fat" class="inputt" />
+
+        <!-- 🔎 Search -->
+        <input
+            v-model="search"
+            @input="searchFood"
+            placeholder="Food name"
+            class="inputt"
+        />
+
+        <!-- Search Results -->
+        <div v-if="results.length" class="border rounded-lg bg-white">
+            <div
+                v-for="item in results"
+                :key="item.FoodItemID"
+                @click="selectFood(item)"
+                class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+            >
+                {{ item.Name }}
+            </div>
+        </div>
+        <input type="number" v-model="quantity" class="inputt" placeholder="Quantity" />
+        <select v-model="unitId" class="inputt">
+            <option v-for="unit in units" :key="unit.unitId" :value="unit.unitId"
+            >
+                {{ unit.shortCode }}
+            </option>
+        </select>
         <button
             @click="addFood"
             class="bg-green-600 text-white w-full py-2 rounded-lg"
@@ -47,7 +69,7 @@
         >
             <div class="flex justify-between">
             <p class="font-semibold">{{ item.name }}</p>
-            <p class="font-semibold text-green-600">{{ item.calories }} cal</p>
+            <p class="font-semibold text-green-600">{{ item.totalCalories }} cal</p>
             </div>
 
             <p class="text-sm text-gray-600">
@@ -63,38 +85,118 @@
 
     </div>
 </template>
+
 <script setup>
 import { ref } from "vue";
+import { onMounted } from "vue";
 
 const props = defineProps(["title", "items", "mealName", "dietType", "diseases"]);
 const emit = defineEmits(["addFood", "uploadImage"]);
 const manualInput = ref(false);
 const recommendation = ref("");
-const food = ref({
-    name: "",
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
+/* 🔎 Search State */
+const search = ref("");
+const results = ref([]);
+const selectedFood = ref(null);
+/* ➕ Quantity + Unit (جديدة) */
+const quantity = ref(1);
+const unitId = ref(1);
+const units = ref([])
+
+onMounted(() => {
+    loadUnits();
 });
+
+async function loadUnits() {
+    try {
+        const response = await fetch("http://localhost:3000/api/units")
+        units.value = await response.json()
+
+        if (units.value.length > 0) {
+        unitId.value = units.value[0].unitId
+        }
+
+    } catch (error) {
+        console.error("Failed to load units", error)
+    }
+}
+
+/* --- SEARCH FUNCTION --- */
+async function searchFood() {
+    if (!search.value.trim()) {
+        results.value = [];
+        return;
+    }
+
+    const res = await fetch(
+        `http://localhost:5000/api/food/search?q=${search.value}`
+    );
+
+    results.value = await res.json();
+}
+
+/* --- Select Food --- */
+async function selectFood(item) {
+    selectedFood.value = item;
+    search.value = item.Name;
+    results.value = [];
+
+    try {
+        const res = await fetch(
+        `http://localhost:5000/api/food/${item.FoodItemID}/units`
+        );
+        units.value = await res.json();
+
+        if (units.value.length > 0) {
+        unitId.value = units.value[0].unitId;
+        }
+
+    } catch (error) {
+        console.error("Failed to load food units", error);
+    }
+}
 
 /* --- Save Food --- */
 function addFood() {
-    if (!food.value.name.trim()) return;
-    emit("addFood", props.mealName, { ...food.value });
-    generateRecommendation(food.value);
+    if (!selectedFood.value) {
+        alert("Item not found");
+        return;
+    }
+
+    const foodData = {
+        foodItemId: selectedFood.value.FoodItemID, // ⭐ هذا المهم
+        quantity: quantity.value,
+        unitId: unitId.value,
+
+        // نخلي بيانات التغذية للتوصيات
+        name: selectedFood.value.Name,
+        calories: selectedFood.value.Calories,
+        protein: selectedFood.value.Protein,
+        carbs: selectedFood.value.Carbs,
+        fat: selectedFood.value.Fat,
+    };
+
+    emit("addFood", props.mealName, foodData);
+
+    generateRecommendation(foodData);
+
     manualInput.value = false;
-    food.value = { name: "", calories: 0, protein: 0, carbs: 0, fat: 0 };
+    search.value = "";
+    selectedFood.value = null;
+    quantity.value = 1;
 }
 
 /* --- Image Upload Trigger --- */
 const imageInput = ref(null);
+
 function triggerImage() {
     imageInput.value.click();
 }
+
 function handleImage(e) {
     const file = e.target.files[0];
     emit("uploadImage", props.mealName, file);
+
     generateRecommendation({
         calories: 300,
         protein: 20,
@@ -106,7 +208,7 @@ function handleImage(e) {
 /* --- Recommendation System --- */
 function generateRecommendation(food) {
     let messages = [];
-    /* ⭐ ZERO FOOD CHECK */
+
     if (
         food.calories === 0 &&
         food.protein === 0 &&
@@ -114,16 +216,16 @@ function generateRecommendation(food) {
         food.fat === 0
     ) {
         recommendation.value =
-        "This food contains no calories or nutrients. Please enter valid values.";
+            "This food contains no calories or nutrients. Please enter valid values.";
         return;
     }
-    /* ⭐ DIET TYPE RECOMMENDATION */
+
     const dietMsg = getDietRecommendation(food, props.dietType);
     if (dietMsg) messages.push(dietMsg);
-    /* ⭐ DISEASES RECOMMENDATION */
+
     const diseaseMsgs = getDiseaseAlerts(food, props.diseases);
     messages.push(...diseaseMsgs);
-    /* ⭐ FINAL MESSAGE */
+
     recommendation.value = messages.join(" ");
 }
 
@@ -158,30 +260,33 @@ function getDietRecommendation(food, diet) {
 function getDiseaseAlerts(food, diseases = []) {
     const alerts = [];
     if (!Array.isArray(diseases)) return alerts;
+
     diseases.forEach((disease) => {
         if (disease === "Hypertension") {
-        if (food.fat > 20)
-            alerts.push("High fat is not recommended for hypertension.");
-        if (food.carbs > 50)
-            alerts.push("High sugar can increase blood pressure.");
+            if (food.fat > 20)
+                alerts.push("High fat is not recommended for hypertension.");
+            if (food.carbs > 50)
+                alerts.push("High sugar can increase blood pressure.");
         }
         if (disease === "Diabetes") {
-        if (food.carbs > 30)
-            alerts.push("Carbohydrates are high and can affect blood sugar levels.");
-        if (food.calories > 400)
-            alerts.push("High-calorie meals are not suitable for diabetes.");
+            if (food.carbs > 30)
+                alerts.push("Carbohydrates are high and can affect blood sugar levels.");
+            if (food.calories > 400)
+                alerts.push("High-calorie meals are not suitable for diabetes.");
         }
         if (disease === "Colon") {
-        if (food.fat > 15)
-            alerts.push("High fat may irritate the colon.");
-        if (food.carbs < 10)
-            alerts.push("Low fiber may increase colon issues.");
+            if (food.fat > 15)
+                alerts.push("High fat may irritate the colon.");
+            if (food.carbs < 10)
+                alerts.push("Low fiber may increase colon issues.");
         }
         if (disease === "Cholesterol") {
-        if (food.fat > 15)
-            alerts.push("High fat can raise cholesterol levels.");
+            if (food.fat > 15)
+                alerts.push("High fat can raise cholesterol levels.");
         }
     });
+
     return alerts;
 }
+
 </script>
