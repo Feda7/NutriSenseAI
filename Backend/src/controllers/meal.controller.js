@@ -78,3 +78,70 @@ exports.getTodayMeals = async (req, res) => {
     res.status(500).json({ error: "Database error" });
   }
 };
+
+exports.getHomeData = async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // 1. Get DietTypeID from the junction table userdiettype
+        const [userDietRows] = await db.query(
+            "SELECT DietTypeID FROM `userdiettype` WHERE UserID = ?", 
+            [userId]
+        );
+        
+        if (userDietRows.length === 0) {
+            return res.status(200).json({ 
+                suggestedMeals: [], 
+                healthTips: [{ text: "Please complete your profile to get personalized meal suggestions! ✨", emoji: "📝" }] 
+            });
+        }
+        
+        const dietTypeId = userDietRows[0].DietTypeID;
+
+        // 2. Get user diseases from userdiseases table
+        const [diseaseRows] = await db.query(
+            "SELECT DiseaseID FROM `userdiseases` WHERE UserID = ?",
+            [userId]
+        );
+        const userDiseaseIds = diseaseRows.map(d => d.DiseaseID);
+
+        // 3. Fetch suggested meals matching the DietType
+        const [allSuggested] = await db.query(
+            "SELECT * FROM MealsCatalog WHERE dietTypeId = ?", 
+            [dietTypeId]
+        );
+
+        // 4. Filter meals to exclude unsuitable ones based on DiseaseIDs
+        const filteredMeals = allSuggested.filter(meal => {
+            if (!meal.unsuitableDiseases) return true;
+            const unsuitableIds = meal.unsuitableDiseases.split(',').map(Number);
+            return !userDiseaseIds.some(id => unsuitableIds.includes(id));
+        });
+
+        // 5. Personalized Health Tips in English
+        let tips = [];
+        
+        // Example: If DiseaseID 1 is Diabetes
+        if (userDiseaseIds.includes(1)) {
+            tips.push({ text: "Since you're managing your blood sugar 🍬, try replacing white bread with whole grains to stay energized! ✨", emoji: "🌾" });
+            tips.push({ text: "Drinking water 30 minutes before a meal can help regulate sugar levels. Give it a try today! 💧", emoji: "🥤" });
+        }
+        
+        // Example: If DiseaseID 2 is Hypertension (Blood Pressure)
+        if (userDiseaseIds.includes(2)) {
+            tips.push({ text: "Keep your heart happy! Try reducing salt and use lemon or herbs to add great flavor to your meals 🍋", emoji: "🌿" });
+        }
+        
+        // Default tips if no specific diseases are found
+        if (tips.length === 0) {
+            tips.push({ text: "You're doing a great job! Keep staying hydrated and stick to your plan to reach your goals 💪", emoji: "🌟" });
+            tips.push({ text: "Remember, a good night's sleep is essential for weight loss and overall health 😴", emoji: "🌙" });
+        }
+
+        res.json({ suggestedMeals: filteredMeals, healthTips: tips });
+
+    } catch (err) {
+        console.error("❌ Home Data Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};

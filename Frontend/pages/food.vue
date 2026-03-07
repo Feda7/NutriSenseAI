@@ -13,10 +13,11 @@
 
     <!-- Meals Section -->
     <MealsSection
-    :meals="meals"
-    :diseases="diseases"
-    @addFood="addFoodToMeal"
-    @uploadImage="analyzeImageForMeal"
+      :meals="meals"
+      :dietType="dietType"
+      :diseases="diseases"
+      @addFood="addFoodToMeal"
+      @uploadImage="analyzeImageForMeal"
     />
 
     </div>
@@ -28,6 +29,10 @@ import { ref, onMounted } from 'vue'
 import { useState } from '#app'
 
 const currentUser = useState('currentUser')
+
+const dietType = computed(() => {
+      return currentUser.value?.dietTypeId || null
+    })
 
 onMounted(async () => {
   const storedUser = localStorage.getItem('user')

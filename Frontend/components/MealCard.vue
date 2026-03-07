@@ -87,21 +87,21 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 
 const props = defineProps(["title", "items", "mealName", "dietType", "diseases"]);
 const emit = defineEmits(["addFood", "uploadImage"]);
+
 const manualInput = ref(false);
 const recommendation = ref("");
-/* 🔎 Search State */
+
 const search = ref("");
 const results = ref([]);
 const selectedFood = ref(null);
-/* ➕ Quantity + Unit (جديدة) */
+
 const quantity = ref(1);
 const unitId = ref(1);
-const units = ref([])
+const units = ref([]);
 
 onMounted(() => {
     loadUnits();
@@ -109,19 +109,16 @@ onMounted(() => {
 
 async function loadUnits() {
     try {
-        const response = await fetch("http://localhost:3000/api/units")
-        units.value = await response.json()
-
+        const response = await fetch("http://localhost:5000/api/units");
+        units.value = await response.json();
         if (units.value.length > 0) {
-        unitId.value = units.value[0].unitId
+            unitId.value = units.value[0].unitId;
         }
-
     } catch (error) {
-        console.error("Failed to load units", error)
+        console.error("Failed to load units", error);
     }
 }
 
-/* --- SEARCH FUNCTION --- */
 async function searchFood() {
     if (!search.value.trim()) {
         results.value = [];
@@ -135,7 +132,6 @@ async function searchFood() {
     results.value = await res.json();
 }
 
-/* --- Select Food --- */
 async function selectFood(item) {
     selectedFood.value = item;
     search.value = item.Name;
@@ -143,20 +139,18 @@ async function selectFood(item) {
 
     try {
         const res = await fetch(
-        `http://localhost:5000/api/food/${item.FoodItemID}/units`
+            `http://localhost:5000/api/food/${item.FoodItemID}/units`
         );
         units.value = await res.json();
 
         if (units.value.length > 0) {
-        unitId.value = units.value[0].unitId;
+            unitId.value = units.value[0].unitId;
         }
-
     } catch (error) {
         console.error("Failed to load food units", error);
     }
 }
 
-/* --- Save Food --- */
 function addFood() {
     if (!selectedFood.value) {
         alert("Item not found");
@@ -164,21 +158,21 @@ function addFood() {
     }
 
     const foodData = {
-        foodItemId: selectedFood.value.FoodItemID, // ⭐ هذا المهم
+        foodItemId: selectedFood.value.FoodItemID,
         quantity: quantity.value,
         unitId: unitId.value,
 
-        // نخلي بيانات التغذية للتوصيات
         name: selectedFood.value.Name,
-        calories: selectedFood.value.Calories,
-        protein: selectedFood.value.Protein,
-        carbs: selectedFood.value.Carbs,
-        fat: selectedFood.value.Fat,
+        totalCalories: selectedFood.value.Calories * quantity.value,
+        protein: selectedFood.value.Protein * quantity.value,
+        carbs: selectedFood.value.Carbs * quantity.value,
+        fat: selectedFood.value.Fat * quantity.value,
+        fiber: selectedFood.value.Fiber * quantity.value,
+        sodium: selectedFood.value.Sodium * quantity.value,
+        cholesterol: selectedFood.value.Cholesterol * quantity.value,
     };
 
     emit("addFood", props.mealName, foodData);
-
-    generateRecommendation(foodData);
 
     manualInput.value = false;
     search.value = "";
@@ -186,107 +180,117 @@ function addFood() {
     quantity.value = 1;
 }
 
-/* --- Image Upload Trigger --- */
-const imageInput = ref(null);
+/* ================= TOTALS ================= */
 
-function triggerImage() {
-    imageInput.value.click();
-}
+const totals = computed(() => {
+    return props.items.reduce(
+        (acc, item) => {
+            acc.calories += Number(item.totalCalories || 0);
+            acc.protein += Number(item.protein || 0);
+            acc.carbs += Number(item.carbs || 0);
+            acc.fat += Number(item.fat || 0);
+            acc.fiber += Number(item.fiber || 0);
+            acc.sodium += Number(item.sodium || 0);
+            acc.cholesterol += Number(item.cholesterol || 0);
+            return acc;
+        },
+        {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0,
+            sodium: 0,
+            cholesterol: 0,
+        }
+    );
+});
 
-function handleImage(e) {
-    const file = e.target.files[0];
-    emit("uploadImage", props.mealName, file);
+watch(
+    () => [totals.value, props.dietType, props.diseases],
+    () => {
+        generateRecommendation();
+    },
+    { deep: true }
+);
 
-    generateRecommendation({
-        calories: 300,
-        protein: 20,
-        carbs: 25,
-        fat: 10,
-    });
-}
+/* ================= RECOMMENDATION ================= */
 
-/* --- Recommendation System --- */
-function generateRecommendation(food) {
+function generateRecommendation() {
+    const food = totals.value;
     let messages = [];
 
-    if (
-        food.calories === 0 &&
-        food.protein === 0 &&
-        food.carbs === 0 &&
-        food.fat === 0
-    ) {
-        recommendation.value =
-            "This food contains no calories or nutrients. Please enter valid values.";
-        return;
-    }
-
-    const dietMsg = getDietRecommendation(food, props.dietType);
+    const dietMsg = getDietRecommendation(food);
     if (dietMsg) messages.push(dietMsg);
 
-    const diseaseMsgs = getDiseaseAlerts(food, props.diseases);
+    const diseaseMsgs = getDiseaseAlerts(food);
     messages.push(...diseaseMsgs);
 
     recommendation.value = messages.join(" ");
 }
 
-/* ------ Diet Logic ------ */
-function getDietRecommendation(food, diet) {
-    if (diet === "Bland") {
-        if (food.fat > 15) return "High fat is not suitable for a Bland Diet.";
-        if (food.carbs > 40) return "High carbs may irritate the stomach.";
-        return "This meal fits well with the Bland Diet.";
+/* ================= DIET LOGIC ================= */
+
+function getDietRecommendation(food) {
+    const diet = props.dietType;
+
+    if (diet === 2 || diet === "Bland") {
+        if (food.fat > 15) return "High fat is not suitable for Bland Diet.";
+        return "Meal fits Bland Diet.";
     }
-    if (diet === "High-Protein") {
-        if (food.protein < 20) return "Protein is too low for a High-Protein Diet.";
-        return "Great choice! High in protein.";
+
+    if (diet === 3 || diet === "High-Protein") {
+        if (food.protein < 20) return "Protein is too low for High-Protein diet.";
+        return "Great high-protein meal.";
     }
-    if (diet === "High-Fiber") {
-        if (food.carbs < 15) return "Fiber is low. Add vegetables or whole grains.";
-        return "Your meal is rich in fiber.";
+
+    if (diet === 4 || diet === "High-Fiber") {
+        if (food.fiber < 8) return "Fiber is too low. Add vegetables.";
+        return "Good fiber level.";
     }
-    if (diet === "Low-Saturated Fat") {
-        if (food.fat > 18) return "Fat level is too high for a Low-Saturated Fat Diet.";
-        return "Low fat — good for your diet.";
+
+    if (diet === 5 || diet === "Low-Saturated Fat") {
+        if (food.fat > 18) return "Fat level too high.";
+        return "Low fat meal.";
     }
-    if (diet === "DASH") {
-        if (food.fat > 20) return "Fat is too high for DASH.";
-        if (food.carbs > 50) return "Sugars are too high for DASH.";
-        return "Balanced meal suitable for DASH.";
+
+    if (diet === 6 || diet === "DASH") {
+        if (food.sodium > 1500) return "Too much sodium for DASH.";
+        return "Suitable for DASH diet.";
     }
+
     return "";
 }
 
-/* ------ Disease Logic ------ */
-function getDiseaseAlerts(food, diseases = []) {
+/* ================= DISEASE ALERTS ================= */
+
+function getDiseaseAlerts(food) {
     const alerts = [];
-    if (!Array.isArray(diseases)) return alerts;
+    const diseases = props.diseases || [];
 
     diseases.forEach((disease) => {
         if (disease === "Hypertension") {
-            if (food.fat > 20)
-                alerts.push("High fat is not recommended for hypertension.");
-            if (food.carbs > 50)
-                alerts.push("High sugar can increase blood pressure.");
+            if (food.sodium > 1500)
+                alerts.push("High sodium is risky for hypertension.");
         }
+
         if (disease === "Diabetes") {
-            if (food.carbs > 30)
-                alerts.push("Carbohydrates are high and can affect blood sugar levels.");
-            if (food.calories > 400)
-                alerts.push("High-calorie meals are not suitable for diabetes.");
+            if (food.carbs > 45)
+                alerts.push("High carbs may affect blood sugar.");
         }
-        if (disease === "Colon") {
-            if (food.fat > 15)
-                alerts.push("High fat may irritate the colon.");
-            if (food.carbs < 10)
-                alerts.push("Low fiber may increase colon issues.");
-        }
+
         if (disease === "Cholesterol") {
-            if (food.fat > 15)
-                alerts.push("High fat can raise cholesterol levels.");
+            if (food.cholesterol > 300)
+                alerts.push("High cholesterol intake.");
+        }
+
+        if (disease === "Colon") {
+            if (food.fiber < 10)
+                alerts.push("Low fiber not good for colon health.");
         }
     });
 
     return alerts;
 }
-
+console.log("dietType value:", props.dietType);
 </script>

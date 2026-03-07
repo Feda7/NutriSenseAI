@@ -32,19 +32,16 @@
       </div>
     </section>
 
-
     <!-- Advice Section -->
     <section class="px-20 mt-16">
-      <h2 class="text-2xl font-bold text-green-700 mb-4">Health Tips</h2>
-
-      <div class="bg-white shadow-md rounded-2xl p-6 space-y-3">
-        <p class="text-gray-700">• Stay hydrated — drink at least 6–8 cups of water daily.</p>
-        <p class="text-gray-700">• Add vegetables to at least two meals per day.</p>
-        <p class="text-gray-700">• Avoid processed snacks whenever possible.</p>
-        <p class="text-gray-700">• Ensure high-quality sleep — 7 to 8 hours.</p>
+      <h2 class="text-2xl font-bold text-green-700 mb-4">Personalized Health Tips For You ✨</h2>
+      <div class="bg-white shadow-md rounded-2xl p-6 space-y-4 border-l-4 border-green-500">
+        <div v-for="(tip, index) in healthTips" :key="index" class="flex items-start gap-3">
+          <span class="text-xl">{{ tip.emoji }}</span>
+          <p class="text-gray-700 text-lg leading-relaxed">{{ tip.text }}</p>
+        </div>
       </div>
     </section>
-
 
     <!-- Meal Selection Modal -->
     <div
@@ -78,72 +75,50 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import axios from 'axios' // تأكدي من تثبيت axios
 
-// Suggested Meals Data
-const meals = ref([
-  {
-    name: "Grilled Chicken Salad",
-    calories: 320,
-    protein: 32,
-    carbs: 18,
-    fat: 12,
-    image: "/images/Grilled Chicken Salad.png"
-  },
-  {
-    name: "Oatmeal with Fruits",
-    calories: 280,
-    protein: 8,
-    carbs: 48,
-    fat: 6,
-    image: "/images/Oatmeal with Fruits.png"
-  },
-  {
-    name: "Salmon with Veggies",
-    calories: 450,
-    protein: 34,
-    carbs: 42,
-    fat: 15,
-    image: "/images/Salmon with Veggies.png"
-  },
-  {
-    name: "Greek Yogurt Bowl",
-    calories: 220,
-    protein: 14,
-    carbs: 28,
-    fat: 5,
-    image: "/images/Greek Yogurt Bowl.png"
-  },
-  {
-    name: "Lentil Soup",
-    calories: 260,
-    protein: 17,
-    carbs: 32,
-    fat: 6,
-    image: "/images/Lentil Soup.png"
-  },
-  {
-    name: "Chicken Wrap",
-    calories: 390,
-    protein: 29,
-    carbs: 44,
-    fat: 10,
-    image: "/images/Chicken Wrap.png"
-  }
-])
-
-// Modal Logic
+const meals = ref([])
+const healthTips = ref([])
 const showModal = ref(false)
 const selectedMeal = ref(null)
 const mealTypes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
-function selectMeal(meal) {
-  selectedMeal.value = meal
-  showModal.value = true
+// جلب البيانات عند فتح الصفحة
+onMounted(async () => {
+    const userId = localStorage.getItem('userId'); // نفترض أنك تخزنين الأيدي عند تسجيل الدخول
+    
+    // 1. جلب الوجبات المقترحة
+    const mealRes = await axios.get(`http://localhost:5000/api/meals/suggested/${userId}`);
+    meals.value = mealRes.data;
+
+    // 2. جلب النصائح الصحية (يمكنك عمل API خاص لها أو كتابة منطق بسيط هنا)
+    fetchHealthTips(userId);
+})
+
+async function fetchHealthTips(userId) {
+    // هنا نرسل طلب للباك اند يجلب نصائح بناءً على حالة المستخدم
+    const tipRes = await axios.get(`http://localhost:5000/api/user/tips/${userId}`);
+    healthTips.value = tipRes.data; 
+    // مثال للنصيحة: "بما أنك تعاني من السكري 🍬، جرب استبدال السكر الأبيض بالعسل الطبيعي بكميات محدودة 🍯"
 }
 
-function chooseMeal(type) {
-  console.log("User selected meal:", selectedMeal.value, "→", type)
-  showModal.value = false
+async function chooseMeal(type) {
+    const userId = localStorage.getItem('userId');
+    
+    // إرسال الوجبة للباك اند لتضاف لجدول الوجبات اليومية للمستخدم
+    try {
+        await axios.post('http://localhost:5000/api/meal/add-suggested', {
+            userId: userId,
+            mealId: selectedMeal.value.id,
+            mealType: type,
+            date: new Date().toISOString().split('T')[0]
+        });
+        
+        alert(`تمت إضافة ${selectedMeal.value.name} إلى وجبة ${type} بنجاح! 🎉`);
+        showModal.value = false;
+    } catch (error) {
+        console.error("خطأ في الإضافة:", error);
+    }
 }
 </script>
