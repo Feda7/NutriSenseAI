@@ -63,14 +63,29 @@ exports.getMeal = async (req, res) => {
 exports.getTodayMeals = async (req, res) => {
   const { userId } = req.params;
   try {
-    const [meals] = await db.query(`SELECT MealID, MealTime, TotalCalories FROM Meal WHERE UserID = ? AND Date = CURDATE()`, [userId]);
+    // 🔥 أضفنا MealType هنا عشان الفرونت أند يعرف يوزع الوجبات
+    const [meals] = await db.query(
+      `SELECT MealID, MealType, MealTime, TotalCalories FROM Meal WHERE UserID = ? AND Date = CURDATE()`, 
+      [userId]
+    );
+
     const mealData = await Promise.all(meals.map(async meal => {
       const [items] = await db.query(`
-        SELECT f.Name AS Name, mfi.Quantity, su.ShortCode, mfi.TotalCalories, f.Protein, f.Carbs, f.Fat
-        FROM MealFoodItem mfi JOIN FoodItem f ON mfi.FoodItemID = f.FoodItemID JOIN ServingUnit su ON mfi.UnitID = su.UnitID
+        SELECT f.Name AS name, mfi.Quantity AS quantity, su.ShortCode AS unit, 
+              mfi.TotalCalories AS totalCalories, f.Protein AS protein, 
+              f.Carbs AS carbs, f.Fat AS fat
+        FROM MealFoodItem mfi 
+        JOIN FoodItem f ON mfi.FoodItemID = f.FoodItemID 
+        JOIN ServingUnit su ON mfi.UnitID = su.UnitID
         WHERE mfi.MealID = ?`, [meal.MealID]
       );
-      return { mealId: meal.MealID, mealTime: meal.MealTime, items };
+      // 🔥 نرجع الـ mealType للفرونت أند
+      return { 
+        mealId: meal.MealID, 
+        mealType: meal.MealType, 
+        mealTime: meal.MealTime, 
+        items 
+      };
     }));
     res.json(mealData);
   } catch (err) {
@@ -80,68 +95,129 @@ exports.getTodayMeals = async (req, res) => {
 };
 
 exports.getHomeData = async (req, res) => {
+    const { userId } = req.params;
+
     try {
-        const userId = req.params.userId;
+        // 1. جلب بيانات المستخدم والهدف اليومي للسعرات
+        const [userRows] = await db.query(`
+            SELECT u.*, ud.DailyCaloriesTarget, ud.DietTypeID 
+            FROM user u 
+            LEFT JOIN userdiettype ud ON u.UserID = ud.UserID 
+            WHERE u.UserID = ? 
+            ORDER BY ud.StartDate DESC LIMIT 1
+        `, [userId]);
 
-        // 1. Get DietTypeID from the junction table userdiettype
-        const [userDietRows] = await db.query(
-            "SELECT DietTypeID FROM `userdiettype` WHERE UserID = ?", 
-            [userId]
+        if (userRows.length === 0) return res.status(404).json({ message: "User not found" });
+
+        const userData = userRows[0];
+        
+        // جلب الهدف اليومي المحسوب
+        const targetCalories = userData.DailyCaloriesTarget || userData.DailyCalories || 2100;
+
+        // 2. جلب مجموع السعرات من جدول الـ meal (استخدام الأسماء الصحيحة من صورتك)
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [consumedData] = await db.query(
+            "SELECT SUM(TotalCalories) as total FROM meal WHERE UserID = ? AND DATE(Date) = ?", 
+            [userId, today]
         );
         
-        if (userDietRows.length === 0) {
-            return res.status(200).json({ 
-                suggestedMeals: [], 
-                healthTips: [{ text: "Please complete your profile to get personalized meal suggestions! ✨", emoji: "📝" }] 
-            });
-        }
-        
-        const dietTypeId = userDietRows[0].DietTypeID;
+        const currentConsumed = parseFloat(consumedData[0].total || 0);
+        const remaining = targetCalories - currentConsumed;
 
-        // 2. Get user diseases from userdiseases table
-        const [diseaseRows] = await db.query(
-            "SELECT DiseaseID FROM `userdiseases` WHERE UserID = ?",
-            [userId]
-        );
-        const userDiseaseIds = diseaseRows.map(d => d.DiseaseID);
+        let dynamicTips = [];
 
-        // 3. Fetch suggested meals matching the DietType
-        const [allSuggested] = await db.query(
-            "SELECT * FROM MealsCatalog WHERE dietTypeId = ?", 
-            [dietTypeId]
-        );
-
-        // 4. Filter meals to exclude unsuitable ones based on DiseaseIDs
-        const filteredMeals = allSuggested.filter(meal => {
-            if (!meal.unsuitableDiseases) return true;
-            const unsuitableIds = meal.unsuitableDiseases.split(',').map(Number);
-            return !userDiseaseIds.some(id => unsuitableIds.includes(id));
+        // --- Tip 1: Encouragement ---
+        dynamicTips.push({ 
+            emoji: "🌟", 
+            text: "Consistency is key! Every healthy choice you make today brings you closer to your goal." 
         });
 
-        // 5. Personalized Health Tips in English
-        let tips = [];
-        
-        // Example: If DiseaseID 1 is Diabetes
-        if (userDiseaseIds.includes(1)) {
-            tips.push({ text: "Since you're managing your blood sugar 🍬, try replacing white bread with whole grains to stay energized! ✨", emoji: "🌾" });
-            tips.push({ text: "Drinking water 30 minutes before a meal can help regulate sugar levels. Give it a try today! 💧", emoji: "🥤" });
-        }
-        
-        // Example: If DiseaseID 2 is Hypertension (Blood Pressure)
-        if (userDiseaseIds.includes(2)) {
-            tips.push({ text: "Keep your heart happy! Try reducing salt and use lemon or herbs to add great flavor to your meals 🍋", emoji: "🌿" });
-        }
-        
-        // Default tips if no specific diseases are found
-        if (tips.length === 0) {
-            tips.push({ text: "You're doing a great job! Keep staying hydrated and stick to your plan to reach your goals 💪", emoji: "🌟" });
-            tips.push({ text: "Remember, a good night's sleep is essential for weight loss and overall health 😴", emoji: "🌙" });
+        // --- Tip 2: Diet Specific Tip ---
+        const dietMessages = {
+            2: "Focus on small, frequent meals with soft foods to soothe your digestion.",
+            3: "Make sure to spread your protein intake across all your meals for better absorption.",
+            4: "Increase your water intake today to help your body process the extra fiber.",
+            5: "Choose lean protein sources like fish or skinless poultry for your next meal.",
+            6: "Use lemon and spices instead of salt to flavor your food and manage blood pressure."
+        };
+
+        if (dietMessages[userData.DietTypeID]) {
+            dynamicTips.push({ emoji: "🥗", text: dietMessages[userData.DietTypeID] });
         }
 
-        res.json({ suggestedMeals: filteredMeals, healthTips: tips });
+        // --- Tip 3: Dynamic Calories Logic ---
+        if (currentConsumed === 0) {
+            dynamicTips.push({ 
+                emoji: "🍎", 
+                text: `You have ${targetCalories} calories for today. Start by logging your first meal!` 
+            });
+        } else if (currentConsumed < targetCalories) {
+            dynamicTips.push({ 
+                emoji: "📊", 
+                text: `You have consumed ${currentConsumed.toFixed(1)} calories. You still have ${Math.max(0, remaining).toFixed(0)} calories left.` 
+            });
+        } else {
+            dynamicTips.push({ 
+                emoji: "⚠️", 
+                text: `You've reached your limit of ${targetCalories} calories. Focus on hydration now!` 
+            });
+        }
+
+        // إرسال النتائج
+        res.json({
+            healthTips: dynamicTips,
+            summary: {
+                total: targetCalories,
+                consumed: currentConsumed,
+                remaining: remaining > 0 ? remaining : 0
+            }
+        });
+
+    } catch (error) {
+        console.error("Home Data Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+exports.addSuggestedMeal = async (req, res) => {
+    const { userId, mealId, mealType, date } = req.body;
+    const connection = await db.getConnection(); // لاستخدام الـ Transaction لضمان حفظ كل المكونات أو لا شيء
+
+    try {
+        await connection.beginTransaction();
+
+        // 1. جلب بيانات الوجبة والمكونات من الكتالوج
+        const [catalogRows] = await connection.query("SELECT * FROM MealsCatalog WHERE id = ?", [mealId]);
+        if (catalogRows.length === 0) throw new Error("Meal not found");
+        const mealData = catalogRows[0];
+
+        // 2. إنشاء سجل وجبة جديد للمستخدم في جدول meal
+        const [mealResult] = await connection.query(
+            "INSERT INTO meal (UserID, MealType, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [userId, mealType, date, mealData.calories, mealData.protein, mealData.carbs, mealData.fat]
+        );
+        const newUserMealId = mealResult.insertId;
+
+        // 3. فك تشفير المكونات وإضافتها لجدول mealfooditem
+        const ingredients = mealData.ingredientsJson; // مصفوفة الـ IDs مثلاً [5, 12, 8]
+        if (ingredients && ingredients.length > 0) {
+            for (const foodId of ingredients) {
+                await connection.query(
+                    "INSERT INTO mealfooditem (MealID, FoodItemID, Quantity) VALUES (?, ?, ?)",
+                    [newUserMealId, foodId, 1] // نفترض الكمية 1 حالياً
+                );
+            }
+        }
+
+        await connection.commit();
+        res.status(201).json({ message: "Suggested meal and its ingredients added successfully! 🎉" });
 
     } catch (err) {
-        console.error("❌ Home Data Error:", err);
-        res.status(500).json({ error: "Internal Server Error" });
+        await connection.rollback();
+        console.error("❌ Add Suggested Error:", err);
+        res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
     }
 };

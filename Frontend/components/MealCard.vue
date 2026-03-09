@@ -89,7 +89,15 @@
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
 
-const props = defineProps(["title", "items", "mealName", "dietType", "diseases"]);
+// التعديل الأساسي هنا: أضفنا Number لتعريف الـ prop الخاص بـ dietType
+const props = defineProps({
+    title: String,
+    items: Array,
+    mealName: String,
+    dietType: [Number, String, Object], 
+    diseases: Array
+});
+
 const emit = defineEmits(["addFood", "uploadImage"]);
 
 const manualInput = ref(false);
@@ -218,6 +226,13 @@ watch(
 
 function generateRecommendation() {
     const food = totals.value;
+    
+    // 🔥 هذا هو السطر السحري: إذا السعرات 0، لا تظهر أي نصيحة
+    if (food.calories === 0) {
+        recommendation.value = "";
+        return;
+    }
+
     let messages = [];
 
     const dietMsg = getDietRecommendation(food);
@@ -234,6 +249,7 @@ function generateRecommendation() {
 function getDietRecommendation(food) {
     const diet = props.dietType;
 
+    // الآن الكود سيدعم المقارنة بالأرقام (كما في قاعدة بياناتك) أو الأسماء
     if (diet === 2 || diet === "Bland") {
         if (food.fat > 15) return "High fat is not suitable for Bland Diet.";
         return "Meal fits Bland Diet.";
@@ -292,5 +308,4 @@ function getDiseaseAlerts(food) {
 
     return alerts;
 }
-console.log("dietType value:", props.dietType);
 </script>

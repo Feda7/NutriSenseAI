@@ -23,6 +23,8 @@ exports.createUser = async (req, res) => {
       }
       for (const diseaseId of conditions) {
         await db.query("INSERT INTO UserDiseases (UserID, DiseasesID) VALUES (?, ?)", [userId, diseaseId]);
+        // إضافة هذا السطر بعد حفظ بيانات الدايت
+        await db.query("UPDATE `user` SET DailyCalories = ? WHERE UserID = ?", [dailyCalories, userId]);
       }
     }
 
@@ -172,9 +174,35 @@ exports.updateUser = async (req, res) => {
       [dailyCalories, proteinTarget, fatTarget, carbTarget, userId]
     );
 
+    await db.query("UPDATE \`user\` SET DailyCalories = ? WHERE UserID = ?", [dailyCalories, userId]);
     res.json({ message: "User fully updated successfully ✅" });
   } catch (error) {
     console.error("❌ UPDATE ERROR:", error);
     res.status(500).json({ message: "Error updating user" });
   }
+};
+
+// في ملف user.controller.js أو auth.controller.js
+exports.updateDailyCalories = async (req, res) => {
+    const { userId, calories } = req.body;
+
+    try {
+        // تحديث العمود DailyCalories بناءً على UserID
+        const [result] = await db.query(
+            "UPDATE user SET DailyCalories = ? WHERE UserID = ?",
+            [calories, userId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ 
+            success: true, 
+            message: "Daily calories updated successfully in database!" 
+        });
+    } catch (error) {
+        console.error("Update Calories Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
 };

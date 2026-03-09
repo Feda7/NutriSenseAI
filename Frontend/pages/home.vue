@@ -34,7 +34,7 @@
 
     <!-- Advice Section -->
     <section class="px-20 mt-16">
-      <h2 class="text-2xl font-bold text-green-700 mb-4">Personalized Health Tips For You ✨</h2>
+      <h2 class="text-2xl font-bold text-green-700 mb-4">YOU ARE UNSTOPABLE✨</h2>
       <div class="bg-white shadow-md rounded-2xl p-6 space-y-4 border-l-4 border-green-500">
         <div v-for="(tip, index) in healthTips" :key="index" class="flex items-start gap-3">
           <span class="text-xl">{{ tip.emoji }}</span>
@@ -76,7 +76,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios' // تأكدي من تثبيت axios
+import axios from 'axios'
+import { useState } from '#app' // أضفنا هذا السطر
+
+const currentUser = useState('currentUser') // نستخدم نفس الـ state حقك
 
 const meals = ref([])
 const healthTips = ref([])
@@ -84,29 +87,39 @@ const showModal = ref(false)
 const selectedMeal = ref(null)
 const mealTypes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
-// جلب البيانات عند فتح الصفحة
 onMounted(async () => {
-    const userId = localStorage.getItem('userId'); // نفترض أنك تخزنين الأيدي عند تسجيل الدخول
-    
-    // 1. جلب الوجبات المقترحة
-    const mealRes = await axios.get(`http://localhost:5000/api/meals/suggested/${userId}`);
-    meals.value = mealRes.data;
+    // 1. استرجاع البيانات من localStorage وتثبيتها في الـ useState
+    const storedUser = localStorage.getItem('user');
+    const userId = localStorage.getItem('userId'); 
 
-    // 2. جلب النصائح الصحية (يمكنك عمل API خاص لها أو كتابة منطق بسيط هنا)
-    fetchHealthTips(userId);
+    if (storedUser && !currentUser.value) {
+        currentUser.value = JSON.parse(storedUser);
+    }
+    
+    // إذا ما فيه يوزر آيدي، هنا المشكلة اللي كانت تطردك
+    if (!userId) {
+        console.error("User ID not found in localStorage");
+        // router.push('/') // اختياري إذا حابة يرجع للإندكس برمجياً
+        return;
+    }
+
+    try {
+        const response = await axios.get(`http://localhost:5000/api/home-data/${userId}`);
+        meals.value = response.data.suggestedMeals;
+        healthTips.value = response.data.healthTips;
+    } catch (error) {
+        console.error("Error fetching home data:", error);
+    }
 })
 
-async function fetchHealthTips(userId) {
-    // هنا نرسل طلب للباك اند يجلب نصائح بناءً على حالة المستخدم
-    const tipRes = await axios.get(`http://localhost:5000/api/user/tips/${userId}`);
-    healthTips.value = tipRes.data; 
-    // مثال للنصيحة: "بما أنك تعاني من السكري 🍬، جرب استبدال السكر الأبيض بالعسل الطبيعي بكميات محدودة 🍯"
+// باقي الدوال (selectMeal و chooseMeal) تبقى كما هي بدون تغيير
+function selectMeal(meal) {
+    selectedMeal.value = meal
+    showModal.value = true
 }
 
 async function chooseMeal(type) {
     const userId = localStorage.getItem('userId');
-    
-    // إرسال الوجبة للباك اند لتضاف لجدول الوجبات اليومية للمستخدم
     try {
         await axios.post('http://localhost:5000/api/meal/add-suggested', {
             userId: userId,
@@ -114,11 +127,11 @@ async function chooseMeal(type) {
             mealType: type,
             date: new Date().toISOString().split('T')[0]
         });
-        
-        alert(`تمت إضافة ${selectedMeal.value.name} إلى وجبة ${type} بنجاح! 🎉`);
+        alert(`Successfully added ${selectedMeal.value.name} to your ${type}! 🎉`);
         showModal.value = false;
     } catch (error) {
-        console.error("خطأ في الإضافة:", error);
+        console.error("Error adding meal:", error);
+        alert("Failed to add meal. Please try again.");
     }
 }
 </script>

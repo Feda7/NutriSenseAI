@@ -51,7 +51,8 @@ const props = defineProps({
     required: true
   },
   dietType: {
-    type: [String, Object], // حسب ما تستخدمونه
+    // التعديل هنا: أضفنا Number لكي يقبل القيمة 3 القادمة من قاعدة البيانات دون اعتراض
+    type: [String, Object, Number], 
     default: null
   },
   diseases: {

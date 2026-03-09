@@ -1,5 +1,5 @@
 <template>
-    <section class="max-full bg-gray-50 md:px-56">
+    <section class="max-full bg-gray-50 lg:px-80 md:px-56" >
     <div class="min-h-screen  px-6 py-10">
     
     <!-- Daily Summary Section -->
@@ -25,43 +25,67 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue' // أضفنا computed هنا
 import { useState } from '#app'
+import SummarySection from '../components/SummarySection.vue'
+import MealsSection from '../components/MealsSection.vue'
 
 const currentUser = useState('currentUser')
 
+// تعديل طريقة حساب dietType لتكون أكثر أماناً
 const dietType = computed(() => {
-      return currentUser.value?.dietTypeId || null
-    })
+    return currentUser.value?.dietTypeId || localStorage.getItem('dietTypeId') || null
+})
 
 onMounted(async () => {
-  const storedUser = localStorage.getItem('user')
+  // 1. التأكد من هوية المستخدم
+  const storedUser = localStorage.getItem('user');
+  if (storedUser) currentUser.value = JSON.parse(storedUser);
 
-  if (storedUser) {
-    currentUser.value = JSON.parse(storedUser)
-  }
-
-  const userId = currentUser.value?.id
-
+  const userId = getUserId();
   if (!userId) {
-    console.error("No user found")
-    return
+    console.error("No user ID found");
+    return;
   }
 
   try {
-    const response = await fetch(`http://localhost:5000/api/user/${userId}`)
-    const data = await response.json()
+    // 2. جلب هدف السعرات اليومي أولاً (عشان ما يظهر صفر)
+    const userRes = await fetch(`http://localhost:5000/api/user/${userId}`);
+    if (userRes.ok) {
+      const userData = await userRes.json();
+      // نأخذ القيمة من العمود الممتلئ في قاعدة بياناتك
+      userCalories.value = userData.DailyCaloriesTarget || userData.DailyCalories || 2100;
+    }
 
-    // 🔥 هنا الربط الحقيقي
-    userCalories.value = data.DailyCaloriesTarget || 0
-    remaining.value = userCalories.value - consumed.value
+    // 3. جلب وجبات اليوم لتعبئة الجداول
+    const mealRes = await fetch(`http://localhost:5000/api/meal/today/${userId}`);
+    if (mealRes.ok) {
+      const data = await mealRes.json();
+
+      // تصغير وتصفية القيم القديمة
+      meals.value = { breakfast: [], lunch: [], dinner: [], snacks: [] };
+
+      data.forEach(meal => {
+        // تخزين الـ mealId لكل نوع (فطور، غداء...)
+        mealIds.value[meal.mealType] = meal.mealId;
+        
+        // تعبئة العناصر والتأكد من تحويل السعرات لأرقام
+        meals.value[meal.mealType] = (meal.items || []).map(item => ({
+            ...item,
+            totalCalories: Number(item.totalCalories || 0)
+        }));
+      });
+
+      // 4. تحديث الحسبة النهائية في SummarySection
+      recalcSummary(); 
+    }
 
   } catch (err) {
-    console.error("Failed to load user calories", err)
+    console.error("Load data error:", err);
   }
-})
-const diseases = ref([])
+});
 
+const diseases = ref([])
 /* USER DAILY CALORIES */
 const userCalories = ref(0)
 const consumed = ref(0)
