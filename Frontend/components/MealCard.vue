@@ -193,6 +193,7 @@ function addFood() {
 const totals = computed(() => {
     return props.items.reduce(
         (acc, item) => {
+            // نستخدم الأسماء الصغيرة كما تأتي من الباك أند المحدث
             acc.calories += Number(item.totalCalories || 0);
             acc.protein += Number(item.protein || 0);
             acc.carbs += Number(item.carbs || 0);

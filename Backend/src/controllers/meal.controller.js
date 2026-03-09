@@ -1,10 +1,19 @@
 const { db } = require('../config/db');
 
 exports.createMeal = async (req, res) => {
-  const { userId, mealType } = req.body;
+  const { userId, mealType } = req.body; 
   try {
-    const mealTime = mealType === 'breakfast' ? '08:00:00' : mealType === 'lunch' ? '13:00:00' : mealType === 'dinner' ? '19:00:00' : '16:00:00';
-    const [result] = await db.query(`INSERT INTO Meal (UserID, MealTime, Date, TotalCalories) VALUES (?, ?, NOW(), 0)`, [userId, mealTime]);
+    // تحديد وقت افتراضي بناءً على النوع
+    const mealTime = mealType === 'breakfast' ? '08:00:00' : 
+                    mealType === 'lunch' ? '13:00:00' : 
+                    mealType === 'dinner' ? '19:00:00' : '16:00:00';
+    
+    // حفظ الـ MealType ضروري جداً لكي لا تختفي الوجبة عند العودة للصفحة
+    const [result] = await db.query(
+      `INSERT INTO Meal (UserID, MealType, MealTime, Date, TotalCalories) VALUES (?, ?, ?, CURDATE(), 0)`, 
+      [userId, mealType, mealTime]
+    );
+    
     res.status(201).json({ message: "Meal created successfully", mealId: result.insertId });
   } catch (err) {
     console.error("Create Meal Error:", err);
@@ -15,26 +24,29 @@ exports.createMeal = async (req, res) => {
 exports.addFoodToMeal = async (req, res) => {
   const { mealId, foodItemId, quantity, unitId } = req.body;
   try {
+    // 1. جلب سعرات الصنف
     const [foodRows] = await db.query("SELECT Calories FROM FoodItem WHERE FoodItemID = ?", [foodItemId]);
     if (!foodRows.length) return res.status(404).json({ error: "Food not found" });
     
     const caloriesPer100g = foodRows[0].Calories;
     const [unitRows] = await db.query(`SELECT ToGramFact FROM FoodItemServingUnit WHERE FoodItemID = ? AND UnitID = ?`, [foodItemId, unitId]);
-    if (!unitRows.length) return res.status(400).json({ error: "Invalid unit for this food" });
+    if (!unitRows.length) return res.status(400).json({ error: "Invalid unit" });
 
     const toGram = unitRows[0].ToGramFact;
-    const gramAmount = quantity * toGram;
-    const totalCalories = (gramAmount / 100) * caloriesPer100g;
+    const totalCalories = (quantity * toGram / 100) * caloriesPer100g;
 
-    const [existing] = await db.query(`SELECT * FROM MealFoodItem WHERE MealID = ? AND FoodItemID = ? AND UnitID = ?`, [mealId, foodItemId, unitId]);
+    // 2. إضافة الصنف لجدول MealFoodItem
+    await db.query(
+      `INSERT INTO MealFoodItem (MealID, FoodItemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
+      [mealId, foodItemId, quantity, unitId, totalCalories]
+    );
 
-    if (existing.length > 0) {
-      await db.query(`UPDATE MealFoodItem SET Quantity = Quantity + ?, TotalCalories = TotalCalories + ? WHERE MealID = ? AND FoodItemID = ? AND UnitID = ?`, [quantity, totalCalories, mealId, foodItemId, unitId]);
-    } else {
-      await db.query(`INSERT INTO MealFoodItem (MealID, FoodItemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, [mealId, foodItemId, quantity, unitId, totalCalories]);
-    }
+    // 🔥 3. أهم خطوة: تحديث جدول Meal الرئيسي لكي تظهر السعرات في صفحة الهوم
+    await db.query(
+      `UPDATE Meal SET TotalCalories = TotalCalories + ? WHERE MealID = ?`, 
+      [totalCalories, mealId]
+    );
 
-    await db.query(`UPDATE Meal SET TotalCalories = TotalCalories + ? WHERE MealID = ?`, [totalCalories, mealId]);
     res.status(201).json({ message: "Food added successfully", addedCalories: totalCalories });
   } catch (err) {
     console.error("Add Food Error:", err);
@@ -63,27 +75,23 @@ exports.getMeal = async (req, res) => {
 exports.getTodayMeals = async (req, res) => {
   const { userId } = req.params;
   try {
-    // 🔥 أضفنا MealType هنا عشان الفرونت أند يعرف يوزع الوجبات
     const [meals] = await db.query(
-      `SELECT MealID, MealType, MealTime, TotalCalories FROM Meal WHERE UserID = ? AND Date = CURDATE()`, 
+      `SELECT MealID, MealType, TotalCalories FROM Meal WHERE UserID = ? AND Date = CURDATE()`, 
       [userId]
     );
 
     const mealData = await Promise.all(meals.map(async meal => {
       const [items] = await db.query(`
-        SELECT f.Name AS name, mfi.Quantity AS quantity, su.ShortCode AS unit, 
-              mfi.TotalCalories AS totalCalories, f.Protein AS protein, 
-              f.Carbs AS carbs, f.Fat AS fat
+        SELECT f.Name AS name, mfi.TotalCalories AS totalCalories, 
+              f.Protein AS protein, f.Carbs AS carbs, f.Fat AS fat, 
+              f.Fiber AS fiber, f.Sodium AS sodium, f.Cholesterol AS cholesterol
         FROM MealFoodItem mfi 
         JOIN FoodItem f ON mfi.FoodItemID = f.FoodItemID 
-        JOIN ServingUnit su ON mfi.UnitID = su.UnitID
         WHERE mfi.MealID = ?`, [meal.MealID]
       );
-      // 🔥 نرجع الـ mealType للفرونت أند
       return { 
         mealId: meal.MealID, 
-        mealType: meal.MealType, 
-        mealTime: meal.MealTime, 
+        mealType: meal.MealType, // هذا هو المفتاح لعدم الاختفاء
         items 
       };
     }));
@@ -110,16 +118,12 @@ exports.getHomeData = async (req, res) => {
         if (userRows.length === 0) return res.status(404).json({ message: "User not found" });
 
         const userData = userRows[0];
-        
-        // جلب الهدف اليومي المحسوب
         const targetCalories = userData.DailyCaloriesTarget || userData.DailyCalories || 2100;
 
-        // 2. جلب مجموع السعرات من جدول الـ meal (استخدام الأسماء الصحيحة من صورتك)
-        const today = new Date().toISOString().split('T')[0];
-        
+        // 2. جلب مجموع السعرات لليوم الحالي فقط باستخدام CURDATE()
         const [consumedData] = await db.query(
-            "SELECT SUM(TotalCalories) as total FROM meal WHERE UserID = ? AND DATE(Date) = ?", 
-            [userId, today]
+            "SELECT SUM(TotalCalories) as total FROM meal WHERE UserID = ? AND Date = CURDATE()", 
+            [userId]
         );
         
         const currentConsumed = parseFloat(consumedData[0].total || 0);
@@ -133,7 +137,7 @@ exports.getHomeData = async (req, res) => {
             text: "Consistency is key! Every healthy choice you make today brings you closer to your goal." 
         });
 
-        // --- Tip 2: Diet Specific Tip ---
+        // --- Tip 2: Diet Specific Tip (كل الأنواع اللي تعبتي فيها موجودة هنا) ---
         const dietMessages = {
             2: "Focus on small, frequent meals with soft foods to soothe your digestion.",
             3: "Make sure to spread your protein intake across all your meals for better absorption.",
@@ -164,7 +168,6 @@ exports.getHomeData = async (req, res) => {
             });
         }
 
-        // إرسال النتائج
         res.json({
             healthTips: dynamicTips,
             summary: {
