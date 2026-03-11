@@ -71,29 +71,109 @@
   </div>
 </template>
 
+
 <script setup>
+
 definePageMeta({
   layout: "admin"
 })
-import { ref } from 'vue'
 
-const diets = ref(['Bland','High-Protein','High-Fiber','Low-Saturated Fat','DASH'])
+import { ref, onMounted } from "vue"
+
+const diets = ref([])
 const showModal = ref(false)
-const newDiet = ref('')
+const newDiet = ref("")
+
+const API = "http://localhost:5000/api/diets"
+
 
 function openModal() {
   showModal.value = true
 }
 
-function addDiet() {
-  if (newDiet.value.trim()) {
-    diets.value.push(newDiet.value)
-    newDiet.value = ''
-    showModal.value = false
+
+/* ======================
+   تحميل الدايت من السيرفر
+====================== */
+
+async function fetchDiets() {
+  try {
+
+    const res = await fetch(API)
+
+    if (!res.ok) {
+      throw new Error("API error")
+    }
+
+    const data = await res.json()
+
+    diets.value = data
+
+  } catch (error) {
+    console.error("Failed to load diets:", error)
   }
 }
 
-function removeDiet(index) {
-  diets.value.splice(index, 1)
+
+onMounted(() => {
+  fetchDiets()
+})
+
+
+
+/* ======================
+   إضافة دايت
+====================== */
+
+async function addDiet() {
+
+  if (!newDiet.value.trim()) return
+
+  try {
+
+    await fetch(API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: newDiet.value
+      })
+    })
+
+    newDiet.value = ""
+    showModal.value = false
+
+    fetchDiets()
+
+  } catch (error) {
+    console.error("Add diet error:", error)
+  }
+
 }
+
+
+
+/* ======================
+   حذف دايت
+====================== */
+
+async function removeDiet(id) {
+
+  try {
+
+    await fetch(`${API}/${id}`, {
+      method: "DELETE"
+    })
+
+    diets.value = diets.value.filter(
+      diet => diet.DietTypeID !== id
+    )
+
+  } catch (error) {
+    console.error("Delete error:", error)
+  }
+
+}
+
 </script>
