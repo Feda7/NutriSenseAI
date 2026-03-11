@@ -32,7 +32,7 @@
                     </li>
                 </ul>
                 <!-- Profile -->
-                 <div class="hidden md:flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-3">
                     <img 
                         :src="userPhoto" 
                         alt="Profile" 

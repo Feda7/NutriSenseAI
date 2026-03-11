@@ -32,19 +32,16 @@
       </div>
     </section>
 
-
     <!-- Advice Section -->
     <section class="px-20 mt-16">
-      <h2 class="text-2xl font-bold text-green-700 mb-4">Health Tips</h2>
-
-      <div class="bg-white shadow-md rounded-2xl p-6 space-y-3">
-        <p class="text-gray-700">• Stay hydrated — drink at least 6–8 cups of water daily.</p>
-        <p class="text-gray-700">• Add vegetables to at least two meals per day.</p>
-        <p class="text-gray-700">• Avoid processed snacks whenever possible.</p>
-        <p class="text-gray-700">• Ensure high-quality sleep — 7 to 8 hours.</p>
+      <h2 class="text-2xl font-bold text-green-700 mb-4">YOU ARE UNSTOPABLE✨</h2>
+      <div class="bg-white shadow-md rounded-2xl p-6 space-y-4 border-l-4 border-green-500">
+        <div v-for="(tip, index) in healthTips" :key="index" class="flex items-start gap-3">
+          <span class="text-xl">{{ tip.emoji }}</span>
+          <p class="text-gray-700 text-lg leading-relaxed">{{ tip.text }}</p>
+        </div>
       </div>
     </section>
-
 
     <!-- Meal Selection Modal -->
     <div
@@ -78,72 +75,63 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+import { useState } from '#app' // أضفنا هذا السطر
 
-// Suggested Meals Data
-const meals = ref([
-  {
-    name: "Grilled Chicken Salad",
-    calories: 320,
-    protein: 32,
-    carbs: 18,
-    fat: 12,
-    image: "/images/Grilled Chicken Salad.png"
-  },
-  {
-    name: "Oatmeal with Fruits",
-    calories: 280,
-    protein: 8,
-    carbs: 48,
-    fat: 6,
-    image: "/images/Oatmeal with Fruits.png"
-  },
-  {
-    name: "Salmon with Veggies",
-    calories: 450,
-    protein: 34,
-    carbs: 42,
-    fat: 15,
-    image: "/images/Salmon with Veggies.png"
-  },
-  {
-    name: "Greek Yogurt Bowl",
-    calories: 220,
-    protein: 14,
-    carbs: 28,
-    fat: 5,
-    image: "/images/Greek Yogurt Bowl.png"
-  },
-  {
-    name: "Lentil Soup",
-    calories: 260,
-    protein: 17,
-    carbs: 32,
-    fat: 6,
-    image: "/images/Lentil Soup.png"
-  },
-  {
-    name: "Chicken Wrap",
-    calories: 390,
-    protein: 29,
-    carbs: 44,
-    fat: 10,
-    image: "/images/Chicken Wrap.png"
-  }
-])
+const currentUser = useState('currentUser') // نستخدم نفس الـ state حقك
 
-// Modal Logic
+const meals = ref([])
+const healthTips = ref([])
 const showModal = ref(false)
 const selectedMeal = ref(null)
 const mealTypes = ["Breakfast", "Lunch", "Dinner", "Snacks"]
 
+onMounted(async () => {
+    // 1. استرجاع البيانات من localStorage وتثبيتها في الـ useState
+    const storedUser = localStorage.getItem('user');
+    const userId = localStorage.getItem('userId'); 
+
+    if (storedUser && !currentUser.value) {
+        currentUser.value = JSON.parse(storedUser);
+    }
+    
+    // إذا ما فيه يوزر آيدي، هنا المشكلة اللي كانت تطردك
+    if (!userId) {
+        console.error("User ID not found in localStorage");
+        // router.push('/') // اختياري إذا حابة يرجع للإندكس برمجياً
+        return;
+    }
+
+    try {
+        const response = await axios.get(`http://localhost:5000/api/home-data/${userId}`);
+        meals.value = response.data.suggestedMeals;
+        healthTips.value = response.data.healthTips;
+    } catch (error) {
+        console.error("Error fetching home data:", error);
+    }
+})
+
+// باقي الدوال (selectMeal و chooseMeal) تبقى كما هي بدون تغيير
 function selectMeal(meal) {
-  selectedMeal.value = meal
-  showModal.value = true
+    selectedMeal.value = meal
+    showModal.value = true
 }
 
-function chooseMeal(type) {
-  console.log("User selected meal:", selectedMeal.value, "→", type)
-  showModal.value = false
+async function chooseMeal(type) {
+    const userId = localStorage.getItem('userId');
+    try {
+        await axios.post('http://localhost:5000/api/meal/add-suggested', {
+            userId: userId,
+            mealId: selectedMeal.value.id,
+            mealType: type,
+            date: new Date().toISOString().split('T')[0]
+        });
+        alert(`Successfully added ${selectedMeal.value.name} to your ${type}! 🎉`);
+        showModal.value = false;
+    } catch (error) {
+        console.error("Error adding meal:", error);
+        alert("Failed to add meal. Please try again.");
+    }
 }
 </script>

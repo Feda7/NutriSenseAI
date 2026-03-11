@@ -73,12 +73,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useState } from '#app'
 
 const router = useRouter()
 const modelValue = defineModel()
+
 const localData = ref({ 
   email: '', 
   password: '',
@@ -86,15 +87,16 @@ const localData = ref({
 })
 
 const showPassword = ref(false)
-const errorMessage = ref('') // لإظهار رسائل الخطأ
+const errorMessage = ref('')
 
 const isFormValid = computed(() => {
   return localData.value.email && localData.value.password
 })
 
-// دالة تسجيل الدخول
+// ✅ تسجيل الدخول
 const handleLogin = async () => {
   errorMessage.value = ''
+
   try {
     const response = await fetch('http://localhost:5000/api/login', {
       method: 'POST',
@@ -106,28 +108,32 @@ const handleLogin = async () => {
     })
 
     const result = await response.json()
-
+    console.log("Login response:", result)
     if (response.ok) {
-    // خزن الـ userId في localStorage
-    // نحفظ بيانات المستخدم كاملة
-    localStorage.setItem('user', JSON.stringify(result.user))
 
-    // نخزنها في useState عشان الصفحات الثانية تقرأها
-    const currentUser = useState('currentUser')
-    currentUser.value = result.user
-    alert('Logged in successfully!')
-    router.push('/food')
-}
- else {
+      // 🔥 تأكدنا إن السيرفر يرجع dietTypeId
+      console.log("Login response:", result.user)
+
+      // نخزن بيانات المستخدم كاملة
+      localStorage.setItem('user', JSON.stringify(result.user))
+
+      // نخزنها في state
+      const currentUser = useState('currentUser')
+      currentUser.value = result.user
+
+      alert('Logged in successfully!')
+
+      router.push('/food')
+
+    } else {
       errorMessage.value = 'Email or password is incorrect'
     }
+
   } catch (error) {
     errorMessage.value = 'Error connecting to the server'
     console.error('Login error:', error)
   }
 }
-
-import { onMounted } from 'vue'
 
 onMounted(() => {
   const inputs = Array.from(document.querySelectorAll('input'))
@@ -140,7 +146,6 @@ onMounted(() => {
         if (next) {
           next.focus()
         } else {
-          // Auto Trans
           handleLogin()
         }
       }

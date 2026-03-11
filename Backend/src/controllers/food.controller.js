@@ -24,7 +24,7 @@ exports.searchFood = async (req, res) => {
 
 exports.getUnits = async (req, res) => {
   try {
-    const [units] = await db.query(`SELECT UnitID AS unitId, UnitName AS name, ShortCode AS shortCode FROM ServingUnit`);
+    const [units] = await db.query(`SELECT UnitID AS unitId, Name AS name, ShortCode AS shortCode FROM ServingUnit`);
     res.json(units);
   } catch (err) {
     console.error("Get Units Error:", err);
@@ -36,7 +36,7 @@ exports.getFoodUnits = async (req, res) => {
   const { foodId } = req.params;
   try {
     const [units] = await db.query(`
-      SELECT su.UnitID AS unitId, su.UnitName AS name, su.ShortCode AS shortCode, fsu.ToGramFact AS toGram
+      SELECT su.UnitID AS unitId, su.Name AS name, su.ShortCode AS shortCode, fsu.ToGramFact AS toGram
       FROM FoodItemServingUnit fsu JOIN ServingUnit su ON fsu.UnitID = su.UnitID
       WHERE fsu.FoodItemID = ?`, [foodId]
     );

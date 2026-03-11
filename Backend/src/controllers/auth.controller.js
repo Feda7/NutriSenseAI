@@ -67,11 +67,32 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await findUserByCredentials(email, password);
-    if (user) {
-      res.status(200).json({ message: 'Login successful', user: { id: user.UserID, firstName: user.FirstName } });
-    } else {
-      res.status(401).json({ error: 'Invalid email or password' });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
+
+    // 🔥 نجيب آخر دايت للمستخدم
+    const [dietRows] = await db.query(`
+      SELECT DietTypeID 
+      FROM userdiettype 
+      WHERE UserID = ?
+      ORDER BY StartDate DESC
+      LIMIT 1
+    `, [user.UserID]);
+
+    const dietTypeId = dietRows.length ? dietRows[0].DietTypeID : null;
+
+    // 🔥 نرجع كل البيانات اللي يحتاجها الفرونت
+    res.status(200).json({
+      message: 'Login successful',
+      user: {
+        id: user.UserID,
+        firstName: user.FirstName,
+        dietTypeId: dietTypeId
+      }
+    });
+
   } catch (err) {
     console.error('❌ Login Error:', err);
     res.status(500).json({ error: 'Database error' });
