@@ -25,7 +25,7 @@ exports.addFoodToMeal = async (req, res) => {
   const { mealId, foodItemId, quantity, unitId } = req.body;
   try {
     // 1. جلب سعرات الصنف
-    const [foodRows] = await db.query("SELECT Calories FROM FoodItem WHERE FoodItemID = ?", [foodItemId]);
+    const [foodRows] = await db.query("SELECT Calories, Protein, Carbs, Fat FROM FoodItem WHERE FoodItemID = ?", [foodItemId]);
     if (!foodRows.length) return res.status(404).json({ error: "Food not found" });
     
     const caloriesPer100g = foodRows[0].Calories;
@@ -34,6 +34,12 @@ exports.addFoodToMeal = async (req, res) => {
 
     const toGram = unitRows[0].ToGramFact;
     const totalCalories = (quantity * toGram / 100) * caloriesPer100g;
+    // --- إضافة القيم الغذائية الأخرى (تعديلك الخاص) ---
+    const factor = (quantity * toGram / 100);
+    const totalProtein = factor * (foodRows[0].Protein || 0);
+    const totalCarbs = factor * (foodRows[0].Carbs || 0);
+    const totalFat = factor * (foodRows[0].Fat || 0);
+    // ----------------------------------------------
 
     // 2. إضافة الصنف لجدول MealFoodItem
     await db.query(
@@ -42,10 +48,17 @@ exports.addFoodToMeal = async (req, res) => {
     );
 
     // 🔥 3. أهم خطوة: تحديث جدول Meal الرئيسي لكي تظهر السعرات في صفحة الهوم
+    // تحديث جدول Meal الرئيسي ليشمل كل القيم (لصفحة التتبع)
     await db.query(
-      `UPDATE Meal SET TotalCalories = TotalCalories + ? WHERE MealID = ?`, 
-      [totalCalories, mealId]
+      `UPDATE Meal SET 
+        TotalCalories = TotalCalories + ?, 
+        TotalProtein = TotalProtein + ?, 
+        TotalCarbs = TotalCarbs + ?, 
+        TotalFat = TotalFat + ? 
+      WHERE MealID = ?`, 
+      [totalCalories, totalProtein, totalCarbs, totalFat, mealId]
     );
+    
 
     res.status(201).json({ message: "Food added successfully", addedCalories: totalCalories });
   } catch (err) {
@@ -222,5 +235,54 @@ exports.addSuggestedMeal = async (req, res) => {
         res.status(500).json({ error: err.message });
     } finally {
         connection.release();
+    }
+};
+exports.getProgressData = async (req, res) => {
+    const { userId } = req.params;
+    try {
+        // 1. جلب أهداف المستخدم (السعرات والوزن المستهدف) من جدول user و userdiettype
+          // 1. جلب بيانات المستخدم الحالية (الوزن من البروفايل)
+        const [userStats] = await db.query(
+            "SELECT CurrentWeight, DesiredWeight FROM user WHERE UserID = ?", 
+            [userId]
+        );
+
+        // 2. جلب مجموع ما أكله المستخدم "اليوم" من جدول Meal
+        // ابحثي عن هذا الجزء في getProgressData
+        const [todayTotals] = await db.query(`
+            SELECT 
+                IFNULL(SUM(TotalCalories), 0) as totalCalories,
+                IFNULL(SUM(TotalProtein), 0) as totalProtein,
+                IFNULL(SUM(TotalCarbs), 0) as totalCarbs,
+                IFNULL(SUM(TotalFat), 0) as totalFat
+            FROM Meal 
+            WHERE UserID = ? AND DATE(Date) = CURDATE()
+        `, [userId]);
+
+        // 3. جلب بيانات السجل الشهري (للجدول والمخطط)
+        // جلب سجلات مجمعة لكل شهر منذ تاريخ إنشاء الحساب
+const [monthlyLogs] = await db.query(`
+    SELECT 
+        DATE_FORMAT(m.Date, '%M %Y') as date, -- يعرض اسم الشهر والسنة
+        SUM(m.TotalCalories) as calories,
+        SUM(m.TotalProtein) as protein,
+        SUM(m.TotalCarbs) as carbs,
+        SUM(m.TotalFat) as fat,
+        AVG(u.CurrentWeight) as weight -- متوسط الوزن خلال هذا الشهر
+    FROM user u
+    JOIN Meal m ON u.UserID = m.UserID
+    WHERE u.UserID = ? AND m.Date >= u.CreatedAt -- يبدأ من تاريخ إنشاء الحساب
+    GROUP BY YEAR(m.Date), MONTH(m.Date)
+    ORDER BY m.Date DESC
+`, [userId]);
+
+        res.json({
+            goals: userStats[0] || {},
+            today: todayTotals[0] || {},
+            history: monthlyLogs || []
+        });
+    } catch (err) {
+        console.error("Progress Error:", err);
+        res.status(500).json({ error: "Database error" });
     }
 };

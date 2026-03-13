@@ -6,6 +6,7 @@ router.post('/meal', mealController.createMeal);
 router.post('/meal/item', mealController.addFoodToMeal);
 router.get('/meal/:mealId', mealController.getMeal);
 router.get('/meal/today/:userId', mealController.getTodayMeals);
+router.get('/meal/progress/:userId', mealController.getProgressData);
 
 // 🔥 أضيفي هذه الأسطر ضروري جداً لتشغيل صفحة الهوم
 router.get('/home-data/:userId', mealController.getHomeData);

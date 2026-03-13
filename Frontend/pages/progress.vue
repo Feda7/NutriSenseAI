@@ -82,78 +82,73 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Chart, registerables } from 'chart.js'
-
 Chart.register(...registerables)
 
-// بيانات وهمية لشهر كامل
-const monthlyLogs = ref([
-  { date: '2025-11-01', calories: 2000, protein: 120, carbs: 250, fats: 70, weight: 70 },
-  { date: '2025-11-02', calories: 2100, protein: 125, carbs: 260, fats: 72, weight: 70.1 },
-  { date: '2025-11-03', calories: 2050, protein: 123, carbs: 255, fats: 71, weight: 70.2 },
-  { date: '2025-11-04', calories: 1980, protein: 118, carbs: 248, fats: 69, weight: 70.2 },
-  { date: '2025-11-05', calories: 2020, protein: 121, carbs: 252, fats: 70, weight: 70.3 },
-  // أكمل بقية أيام الشهر
-])
+const monthlyLogs = ref([])
+const todayCalories = ref(0)
+const todayProtein = ref(0)
+const todayCarbs = ref(0)
+const todayFats = ref(0)
+const currentWeight = ref(0)
 
-// البيانات اليومية تعتمد على آخر سجل (اليوم الحالي)
-const todayLog = computed(() => monthlyLogs.value[monthlyLogs.value.length - 1])
+const fetchProgress = async () => {
+  // جلب الـ ID من التخزين المحلي
+  const userData = JSON.parse(localStorage.getItem('user'))
+  const userId = userData?.id
+  if (!userId) return
 
-const todayCalories = computed(() => todayLog.value.calories)
-const todayProtein = computed(() => todayLog.value.protein)
-const todayCarbs = computed(() => todayLog.value.carbs)
-const todayFats = computed(() => todayLog.value.fats)
-const currentWeight = computed(() => todayLog.value.weight)
+  try {
+    const res = await fetch(`http://localhost:5000/api/meal/progress/${userId}`)
+    const data = await res.json()
 
-onMounted(() => {
+    // توزيع البيانات الحقيقية
+    todayCalories.value = Math.round(data.today.totalCalories)
+    todayProtein.value = Math.round(data.today.totalProtein)
+    todayCarbs.value = Math.round(data.today.totalCarbs)
+    todayFats.value = Math.round(data.today.totalFat)
+    currentWeight.value = data.goals.CurrentWeight || 0
+
+    // تجهيز بيانات الجدول والمخطط
+    monthlyLogs.value = data.history.map(log => ({
+      date: new Date(log.date).toLocaleDateString(),
+      calories: Math.round(log.calories),
+      protein: Math.round(log.protein),
+      carbs: Math.round(log.carbs),
+      fats: Math.round(log.fats),
+      weight: data.goals.CurrentWeight // يمكن تطويره لاحقاً لجدول الوزن
+    }))
+
+    renderChart()
+  } catch (err) {
+    console.error("Error fetching progress:", err)
+  }
+}
+
+const renderChart = () => {
   const ctx = document.getElementById('progressChart').getContext('2d')
-  new Chart(ctx, {
+  // إذا كان المخطط موجوداً مسبقاً يجب حذفه لإعادة رسمه
+  if (window.myChart) window.myChart.destroy()
+
+  window.myChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: monthlyLogs.value.map(log => log.date),
-      datasets: [
-        {
-          label: 'Weight (kg)',
-          data: monthlyLogs.value.map(log => log.weight),
-          borderColor: '#16A34A',
-          backgroundColor: 'rgba(22,163,74,0.2)',
-          yAxisID: 'y1',
-          tension: 0.3,
-        },
-        {
-          label: 'Calories',
-          data: monthlyLogs.value.map(log => log.calories),
-          borderColor: 'gray',
-          backgroundColor: 'rgba(156,163,175,0.2)',
-          yAxisID: 'y2',
-          tension: 0.3,
-        },
-      ],
+      labels: monthlyLogs.value.map(log => log.date).reverse(),
+      datasets: [{
+        label: 'Calories Intake',
+        data: monthlyLogs.value.map(log => log.calories).reverse(),
+        borderColor: '#16A34A',
+        backgroundColor: 'rgba(22,163,74,0.2)',
+        tension: 0.3,
+        fill: true
+      }]
     },
-    options: {
-      responsive: true,
-      interaction: {
-        mode: 'index',
-        intersect: false,
-      },
-      stacked: false,
-      scales: {
-        y1: {
-          type: 'linear',
-          position: 'left',
-          title: { display: true, text: 'Weight (kg)' },
-        },
-        y2: {
-          type: 'linear',
-          position: 'right',
-          title: { display: true, text: 'Calories' },
-          grid: { drawOnChartArea: false },
-        },
-        x: { title: { display: true, text: 'Date' } },
-      },
-      plugins: { legend: { position: 'top' } },
-    },
+    options: { responsive: true }
   })
+}
+
+onMounted(() => {
+  fetchProgress()
 })
 </script>
