@@ -3,14 +3,15 @@ const { db } = require('../config/db');
 exports.createMeal = async (req, res) => {
   const { userId, mealType } = req.body; 
   try {
-    // تحديد وقت افتراضي بناءً على النوع
-    const mealTime = mealType === 'breakfast' ? '08:00:00' : 
-                    mealType === 'lunch' ? '13:00:00' : 
-                    mealType === 'dinner' ? '19:00:00' : '16:00:00';
+    const now = new Date();
+    const mealTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                    now.getMinutes().toString().padStart(2, '0') + ':' + 
+                    now.getSeconds().toString().padStart(2, '0');
     
-    // حفظ الـ MealType ضروري جداً لكي لا تختفي الوجبة عند العودة للصفحة
+    // إدخال الوجبة مع قيم صفرية (0) لضمان نجاح عملية الجمع لاحقاً
     const [result] = await db.query(
-      `INSERT INTO Meal (UserID, MealType, MealTime, Date, TotalCalories) VALUES (?, ?, ?, CURDATE(), 0)`, 
+      `INSERT INTO Meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
+       VALUES (?, ?, ?, CURDATE(), 0, 0, 0, 0)`, 
       [userId, mealType, mealTime]
     );
     
@@ -20,49 +21,41 @@ exports.createMeal = async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 };
-
 exports.addFoodToMeal = async (req, res) => {
   const { mealId, foodItemId, quantity, unitId } = req.body;
   try {
-    // 1. جلب سعرات الصنف
     const [foodRows] = await db.query("SELECT Calories, Protein, Carbs, Fat FROM FoodItem WHERE FoodItemID = ?", [foodItemId]);
-    if (!foodRows.length) return res.status(404).json({ error: "Food not found" });
-    
-    const caloriesPer100g = foodRows[0].Calories;
     const [unitRows] = await db.query(`SELECT ToGramFact FROM FoodItemServingUnit WHERE FoodItemID = ? AND UnitID = ?`, [foodItemId, unitId]);
-    if (!unitRows.length) return res.status(400).json({ error: "Invalid unit" });
-
+    
     const toGram = unitRows[0].ToGramFact;
-    const totalCalories = (quantity * toGram / 100) * caloriesPer100g;
-    // --- إضافة القيم الغذائية الأخرى (تعديلك الخاص) ---
     const factor = (quantity * toGram / 100);
-    const totalProtein = factor * (foodRows[0].Protein || 0);
-    const totalCarbs = factor * (foodRows[0].Carbs || 0);
-    const totalFat = factor * (foodRows[0].Fat || 0);
-    // ----------------------------------------------
+    
+    // حساب القيم بدقة عالية قبل الإدخال
+    const cal = parseFloat((factor * foodRows[0].Calories).toFixed(2));
+    const pro = parseFloat((factor * (foodRows[0].Protein || 0)).toFixed(2));
+    const carb = parseFloat((factor * (foodRows[0].Carbs || 0)).toFixed(2));
+    const fat = parseFloat((factor * (foodRows[0].Fat || 0)).toFixed(2));
 
-    // 2. إضافة الصنف لجدول MealFoodItem
+    // 1. إدخال الصنف
     await db.query(
       `INSERT INTO MealFoodItem (MealID, FoodItemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
-      [mealId, foodItemId, quantity, unitId, totalCalories]
+      [mealId, foodItemId, quantity, unitId, cal]
     );
 
-    // 🔥 3. أهم خطوة: تحديث جدول Meal الرئيسي لكي تظهر السعرات في صفحة الهوم
-    // تحديث جدول Meal الرئيسي ليشمل كل القيم (لصفحة التتبع)
-    await db.query(
-      `UPDATE Meal SET 
-        TotalCalories = TotalCalories + ?, 
-        TotalProtein = TotalProtein + ?, 
-        TotalCarbs = TotalCarbs + ?, 
-        TotalFat = TotalFat + ? 
-      WHERE MealID = ?`, 
-      [totalCalories, totalProtein, totalCarbs, totalFat, mealId]
-    );
-    
+    // 2. تحديث الإجمالي في جدول Meal (الجمع المباشر من قاعدة البيانات)
+    // داخل دالة addFoodToMeal، استبدلي استعلام التحديث بهذا:
+await db.query(
+  `UPDATE meal SET 
+    TotalCalories = COALESCE(TotalCalories, 0) + ?, 
+    TotalProtein = COALESCE(TotalProtein, 0) + ?, 
+    TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
+    TotalFat = COALESCE(TotalFat, 0) + ? 
+  WHERE MealID = ?`, 
+  [cal, pro, carb, fat, mealId]
+);
 
-    res.status(201).json({ message: "Food added successfully", addedCalories: totalCalories });
+    res.status(201).json({ message: "Success", addedCalories: cal });
   } catch (err) {
-    console.error("Add Food Error:", err);
     res.status(500).json({ error: "Database error" });
   }
 };
@@ -237,52 +230,42 @@ exports.addSuggestedMeal = async (req, res) => {
         connection.release();
     }
 };
+
+// meal.controller.js
 exports.getProgressData = async (req, res) => {
     const { userId } = req.params;
     try {
-        // 1. جلب أهداف المستخدم (السعرات والوزن المستهدف) من جدول user و userdiettype
-          // 1. جلب بيانات المستخدم الحالية (الوزن من البروفايل)
-        const [userStats] = await db.query(
-            "SELECT CurrentWeight, DesiredWeight FROM user WHERE UserID = ?", 
-            [userId]
-        );
+        const [userStats] = await db.query(`SELECT CurrentWeight, JoinDate FROM user WHERE UserID = ?`, [userId]);
+        if (userStats.length === 0) return res.status(404).json({ error: "User not found" });
 
-        // 2. جلب مجموع ما أكله المستخدم "اليوم" من جدول Meal
-        // ابحثي عن هذا الجزء في getProgressData
+        // التعديل هنا: نستخدم CAST لضمان معاملة المجموع كرقم عشري دقيق
         const [todayTotals] = await db.query(`
             SELECT 
-                IFNULL(SUM(TotalCalories), 0) as totalCalories,
-                IFNULL(SUM(TotalProtein), 0) as totalProtein,
-                IFNULL(SUM(TotalCarbs), 0) as totalCarbs,
-                IFNULL(SUM(TotalFat), 0) as totalFat
-            FROM Meal 
-            WHERE UserID = ? AND DATE(Date) = CURDATE()
+                CAST(IFNULL(SUM(TotalCalories), 0) AS DECIMAL(10,2)) as totalCalories,
+                CAST(IFNULL(SUM(TotalProtein), 0) AS DECIMAL(10,2)) as totalProtein,
+                CAST(IFNULL(SUM(TotalCarbs), 0) AS DECIMAL(10,2)) as totalCarbs,
+                CAST(IFNULL(SUM(TotalFat), 0) AS DECIMAL(10,2)) as totalFat
+            FROM meal 
+            WHERE UserID = ? AND DATE(Date) = CURRENT_DATE()
         `, [userId]);
 
-        // 3. جلب بيانات السجل الشهري (للجدول والمخطط)
-        // جلب سجلات مجمعة لكل شهر منذ تاريخ إنشاء الحساب
-const [monthlyLogs] = await db.query(`
-    SELECT 
-        DATE_FORMAT(m.Date, '%M %Y') as date, -- يعرض اسم الشهر والسنة
-        SUM(m.TotalCalories) as calories,
-        SUM(m.TotalProtein) as protein,
-        SUM(m.TotalCarbs) as carbs,
-        SUM(m.TotalFat) as fat,
-        AVG(u.CurrentWeight) as weight -- متوسط الوزن خلال هذا الشهر
-    FROM user u
-    JOIN Meal m ON u.UserID = m.UserID
-    WHERE u.UserID = ? AND m.Date >= u.CreatedAt -- يبدأ من تاريخ إنشاء الحساب
-    GROUP BY YEAR(m.Date), MONTH(m.Date)
-    ORDER BY m.Date DESC
-`, [userId]);
+        const [history] = await db.query(`
+            SELECT 
+                DATE_FORMAT(Date, '%Y-%m-%d') as date, 
+                CAST(SUM(TotalCalories) AS DECIMAL(10,2)) as calories, 
+                CAST(SUM(TotalProtein) AS DECIMAL(10,2)) as protein, 
+                CAST(SUM(TotalCarbs) AS DECIMAL(10,2)) as carbs, 
+                CAST(SUM(TotalFat) AS DECIMAL(10,2)) as fat
+            FROM meal 
+            WHERE UserID = ? 
+            GROUP BY DATE(Date) 
+            ORDER BY DATE(Date) DESC LIMIT 30
+        `, [userId]);
 
-        res.json({
-            goals: userStats[0] || {},
-            today: todayTotals[0] || {},
-            history: monthlyLogs || []
-        });
+        res.json({ goals: userStats[0], today: todayTotals[0], history: history });
     } catch (err) {
-        console.error("Progress Error:", err);
-        res.status(500).json({ error: "Database error" });
+        res.status(500).json({ error: "Internal Server Error" });
     }
 };
+
+    

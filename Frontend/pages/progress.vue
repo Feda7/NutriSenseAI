@@ -46,7 +46,9 @@
     <section class="max-w-7xl mx-auto mb-10">
       <div class="bg-white shadow-md rounded-2xl p-6">
         <h2 class="text-xl font-semibold text-gray-800 mb-6">Monthly Weight & Calories Progress</h2>
-        <canvas id="progressChart" class="w-full h-64"></canvas>
+        <div style="position: relative; height: 400px; width: 100%;">
+          <canvas id="progressChart"></canvas>
+        </div>
       </div>
     </section>
 
@@ -94,61 +96,100 @@ const todayFats = ref(0)
 const currentWeight = ref(0)
 
 const fetchProgress = async () => {
-  // جلب الـ ID من التخزين المحلي
-  const userData = JSON.parse(localStorage.getItem('user'))
-  const userId = userData?.id
-  if (!userId) return
+  if (process.client) {
+    try {
+      const userRaw = localStorage.getItem('user'); 
+      if (!userRaw) return;
+      const userData = JSON.parse(userRaw);
+      const currentUserId = userData.UserID || userData.id; 
 
-  try {
-    const res = await fetch(`http://localhost:5000/api/meal/progress/${userId}`)
-    const data = await res.json()
+      // الربط مع قاعدة البيانات الخاصة بمشروعك
+      const res = await fetch(`http://localhost:5000/api/meal/progress/${currentUserId}`);
+      if (!res.ok) throw new Error(`Server error`);
+      const data = await res.json();
+      
+      // تحديث البيانات العلوية (اليوم الحالي)
+      todayCalories.value = Number(data.today?.totalCalories || 0).toFixed(2);
+      todayProtein.value  = Number(data.today?.totalProtein || 0).toFixed(2);
+      todayCarbs.value    = Number(data.today?.totalCarbs || 0).toFixed(2);
+      todayFats.value     = Number(data.today?.totalFat || 0).toFixed(2);
+      currentWeight.value = data.goals?.CurrentWeight || 0;
 
-    // توزيع البيانات الحقيقية
-    todayCalories.value = Math.round(data.today.totalCalories)
-    todayProtein.value = Math.round(data.today.totalProtein)
-    todayCarbs.value = Math.round(data.today.totalCarbs)
-    todayFats.value = Math.round(data.today.totalFat)
-    currentWeight.value = data.goals.CurrentWeight || 0
+      if (data.history) {
+        // تجهيز البيانات للجدول وللرسم البياني (ربط حقيقي)
+        monthlyLogs.value = data.history.map(log => ({
+          date: log.date,
+          calories: Math.round(log.calories),
+          protein: parseFloat(log.protein).toFixed(1),
+          carbs: parseFloat(log.carbs).toFixed(1),
+          fats: parseFloat(log.fat || 0).toFixed(2),
+          // نستخدم الوزن الحالي من الأهداف لكل نقطة في الرسم مؤقتاً 
+          // أو الوزن التاريخي إذا كان موجوداً في الـ history الخاص بزميلتك
+          weight: data.goals?.CurrentWeight || 0 
+        })).reverse(); // نعكس الترتيب ليظهر من الأقدم للأحدث
 
-    // تجهيز بيانات الجدول والمخطط
-    monthlyLogs.value = data.history.map(log => ({
-      date: new Date(log.date).toLocaleDateString(),
-      calories: Math.round(log.calories),
-      protein: Math.round(log.protein),
-      carbs: Math.round(log.carbs),
-      fats: Math.round(log.fats),
-      weight: data.goals.CurrentWeight // يمكن تطويره لاحقاً لجدول الوزن
-    }))
-
-    renderChart()
-  } catch (err) {
-    console.error("Error fetching progress:", err)
+        renderChart(); 
+      }
+    } catch (err) {
+      console.error("خطأ في جلب بيانات التتبع:", err);
+    }
   }
-}
+};
 
 const renderChart = () => {
-  const ctx = document.getElementById('progressChart').getContext('2d')
-  // إذا كان المخطط موجوداً مسبقاً يجب حذفه لإعادة رسمه
-  if (window.myChart) window.myChart.destroy()
+  const ctx = document.getElementById('progressChart')?.getContext('2d');
+  if (!ctx) return;
+  
+  if (window.myChart) window.myChart.destroy();
 
   window.myChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: monthlyLogs.value.map(log => log.date).reverse(),
-      datasets: [{
-        label: 'Calories Intake',
-        data: monthlyLogs.value.map(log => log.calories).reverse(),
-        borderColor: '#16A34A',
-        backgroundColor: 'rgba(22,163,74,0.2)',
-        tension: 0.3,
-        fill: true
-      }]
+      labels: monthlyLogs.value.map(log => log.date),
+      datasets: [
+        {
+          label: 'Weight (kg)',
+          data: monthlyLogs.value.map(log => log.weight),
+          borderColor: '#16A34A',
+          backgroundColor: 'rgba(22, 163, 74, 0.1)',
+          yAxisID: 'yWeight',
+          tension: 0.4,
+          fill: true
+        },
+        {
+          label: 'Calories',
+          data: monthlyLogs.value.map(log => log.calories),
+          borderColor: '#9CA3AF',
+          backgroundColor: 'transparent',
+          yAxisID: 'yCalories',
+          tension: 0.4
+        }
+      ]
     },
-    options: { responsive: true }
-  })
+    options: {
+      responsive: true,
+      maintainAspectRatio: false, // لمنع الرسم من "التضخم" والخروج من الشاشة
+      scales: {
+        yWeight: {
+          type: 'linear',
+          position: 'left',
+          title: { display: true, text: 'Weight (kg)' },
+          // ضبط المقياس ليظهر الوزن بوضوح (حسب وزن المستخدم)
+          suggestedMin: currentWeight.value - 5,
+          suggestedMax: currentWeight.value + 5
+        },
+        yCalories: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: 'Calories' },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
 }
 
 onMounted(() => {
-  fetchProgress()
-})
+  fetchProgress();
+});
 </script>
