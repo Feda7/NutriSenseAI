@@ -249,6 +249,8 @@ import { ref, computed, watch } from 'vue'
 ========================= */
 const router = useRouter()
 
+
+
 /* =========================
     Base data
 ========================= */
@@ -376,10 +378,7 @@ const isFormValid = computed(() => {
     Submit (FINAL & SAFE ✅)
 ========================= */
 const submitForm = async () => {
-  if (!register2.value?.Email || !register2.value?.Password) {
-    console.error('❌ Email أو Password مفقود')
-    return
-  }
+  if (!register2.value?.Email) return;
 
   const fullData = {
     Email: register2.value.Email,
@@ -394,40 +393,30 @@ const submitForm = async () => {
     ActiveLevelID: activityMap[localData.value.activity],
     GoalID: goalMap[localData.value.goal],
     DietTypeID: dietMap[localData.value.diet] || null,
-    // حافظنا على كود زميلتك هنا تماماً
     MedicalConditions: localData.value.medical.map(m => diseaseMap[m])
   }
 
-  console.log('📤 SENDING TO BACKEND:', fullData)
-
-   try {
-    // 1. هنا نضع الكود الذي سألتِ عنه (إرسال البيانات للسيرفر)
-    const res = await $fetch('http://localhost:5000/api/user', {
-      method: 'POST',
-      body: fullData
-    })
-
-    // 2. هنا نتأكد من الـ ID ونحفظه في المتصفح
-    const finalId = res.userId || res.id; 
-
-    if (res) {
-       if (finalId) {
-          localStorage.setItem('userId', finalId);
-       }
-       localStorage.setItem('isLoggedIn', 'true');
-       
-       console.log('✅ Success! Moving to profile...');
-       
-       // 3. هنا أمر الانتقال المباشر لصفحة البروفايل
-       router.push('/profile');
-    }
-    
-  } catch (err) {
-    console.error('❌ API ERROR:', err)
-    // تنبيه بسيط في حال تكرر الإيميل مثلاً
-    alert('حدث خطأ: تأكدي من أن الإيميل جديد وغير مستخدم مسبقاً');
+  try {
+  const res = await $fetch('http://localhost:5000/api/user', {
+    method: 'POST',
+    body: fullData
+  });
+  
+  if (res.success) {
+    // حفظ الإيميل في المتصفح لاستخدامه في صفحة التفعيل
+    localStorage.setItem('pendingEmail', register2.value.Email);
+    // التحويل الفوري لصفحة التحقق المنفصلة
+    router.push('/verify-account');
   }
 }
+  catch (err) {
+    alert(err.data?.message || 'Email already exists or server error');
+  }
+}
+
+
+
+
 
 import { onMounted } from 'vue'
 
@@ -445,3 +434,15 @@ onMounted(() => {
   })
 })
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
