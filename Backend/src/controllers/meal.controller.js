@@ -267,5 +267,29 @@ exports.getProgressData = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+// ======= الدوال المنقولة من الملف الثاني لتنظيف المشروع =======
 
+// 1. جلب كل الوجبات (تأكدي أن اسم الجدول يطابق حالة الأحرف في قاعدة بياناتك، مثلاً meal)
+exports.getMeals = async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM meal");
+    res.json(rows);
+  } catch (error) {
+    console.error("Fetch All Meals Error:", error);
+    res.status(500).json({ error: "Failed to fetch meals" });
+  }
+};
+
+// 2. حذف وجبة معينة
+exports.deleteMeal = async (req, res) => {
+  const id = req.params.id;
+  try {
+    // ملاحظة: تأكدي هل العمود في داتابيس المحدثة اسمه MealID أم meal_id
+    await db.query("DELETE FROM meal WHERE MealID = ?", [id]);
+    res.json({ message: "Meal deleted successfully" });
+  } catch (error) {
+    console.error("Delete Meal Error:", error);
+    res.status(500).json({ error: "Delete failed" });
+  }
+};
     
