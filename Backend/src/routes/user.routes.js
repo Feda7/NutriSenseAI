@@ -1,4 +1,3 @@
-
 // داشبورد
 
 const express = require("express");
@@ -38,4 +37,10 @@ router.put('/user/:id', userController.updateUser);
 // سيتم استدعاؤه من الفرونت اند عند انتهاء الحسبة
 router.put('/update-calories', userController.updateDailyCalories);
 
+// مسار التحقق من الكود
+router.post('/verify-otp', userController.verifyOTP);
+// مسار إعادة إرسال الكود
+router.post('/resend-otp', userController.resendOTP);
+
 module.exports = router;
+

@@ -126,7 +126,19 @@ const handleLogin = async () => {
       router.push('/food')
 
     } else {
-      errorMessage.value = 'Email or password is incorrect'
+      // 🌟 التعديل الجديد: التحقق إذا كان الحساب غير مفعّل (كود الخطأ 403) 🌟
+      if (response.status === 403 && result.unverified) {
+        alert(result.error) // يظهر التنبيه المكتوب في الباكيند للمستخدم
+        
+        // حفظ الإيميل الحالي في الذاكرة لتستخدمه صفحة التحقق مجدداً لزر Sent Again
+        localStorage.setItem('pendingEmail', localData.value.email)
+        
+        // التحويل الفوري لشاشة كود التحقق لتلقي الكود الطائر للإيميل الحقيقي
+        router.push('/verify-account')
+      } else {
+        // رسالة الخطأ العادية لزميلتك إذا كانت كلمة المرور أو الإيميل خطأ
+        errorMessage.value = result.error || 'Email or password is incorrect'
+      }
     }
 
   } catch (error) {

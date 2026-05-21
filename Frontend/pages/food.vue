@@ -41,11 +41,17 @@ const meals = ref({ breakfast: [], lunch: [], dinner: [], snacks: [] })
 const mealIds = ref({ breakfast: null, lunch: null, dinner: null, snacks: null })
 
 const dietType = computed(() => {
-    return currentUser.value?.dietTypeId || localStorage.getItem('dietTypeId') || null
+    if (process.client) {
+        return currentUser.value?.dietTypeId || localStorage.getItem('dietTypeId') || null
+    }
+    return null
 })
 
 function getUserId() {
-    return currentUser.value?.id || JSON.parse(localStorage.getItem('user'))?.id
+    if (process.client) {
+        return currentUser.value?.id || JSON.parse(localStorage.getItem('user'))?.id
+    }
+    return null
 }
 
 // دالة واحدة فقط عند التحميل لضمان عدم التضارب

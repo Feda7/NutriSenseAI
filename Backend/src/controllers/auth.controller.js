@@ -72,6 +72,49 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // =========================================================
+    // 🌟 التعديل الجديد: التحقق من التفعيل وإرسال كود للإيميل تلقائياً 🌟
+    if (user.isVerified === 0) {
+      const newOtpCode = Math.floor(1000 + Math.random() * 9000).toString();
+      
+      // تحديث الكود في الداتا بيس
+      await db.query("UPDATE `user` SET verificationCode = ? WHERE Email = ?", [newOtpCode, email]);
+
+      // إرسال الكود فوراً للإيميل الحقيقي
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,               
+        secure: true,            
+        auth: {
+          user: 'dhfc397@gmail.com',
+          pass: 'ejrgagysyufzcjhl' // كود التطبيق الموحد بدون مسافات
+        },  
+        tls: { 
+          rejectUnauthorized: false 
+        }
+      });
+
+      const mailOptions = {
+        from: '"NutriSenseAI" <dhfc397@gmail.com>',
+        to: email,
+        subject: 'Verify Your Account - NutriSenseAI',
+        html: `<div style="text-align:center; font-family:sans-serif; border:1px solid #e2e8f0; padding:20px; border-radius:15px;">
+                <h2 style="color:#16a34a;">NutriSenseAI</h2>
+                <p>Welcome back! Please verify your account using this code:</p>
+                <h1 style="font-size:40px; letter-spacing:10px; color:#1e293b;">${newOtpCode}</h1>
+               </div>`
+      };
+
+      await transporter.sendMail(mailOptions);
+
+      return res.status(403).json({ 
+        unverified: true, 
+        error: 'Your account is not verified yet. A new verification code has been sent to your email!' 
+      });
+    }
+    // =========================================================
+
     // 🔥 نجيب آخر دايت للمستخدم
     const [dietRows] = await db.query(`
       SELECT DietTypeID 
@@ -96,5 +139,51 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error('❌ Login Error:', err);
     res.status(500).json({ error: 'Database error' });
+  }
+};
+
+// وظيفة إعادة إرسال كود الـ OTP بناءً على طلب المستخدم (زر Sent Again)
+exports.resendOTP = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const [userRows] = await db.query("SELECT * FROM `user` WHERE Email = ?", [email]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ success: false, message: "الإيميل غير مسجل مسبقاً!" });
+    }
+
+    const newOtpCode = Math.floor(1000 + Math.random() * 9000).toString();
+    await db.query("UPDATE `user` SET verificationCode = ? WHERE Email = ?", [newOtpCode, email]);
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,               
+      secure: true,            
+      auth: {
+        user: 'dhfc397@gmail.com',
+        pass: 'ejrgagysyufzcjhl' // كود التطبيق الموحد بدون مسافات
+      },  
+      tls: { 
+        rejectUnauthorized: false 
+      }
+    });
+
+    const mailOptions = {
+      from: '"NutriSenseAI" <dhfc397@gmail.com>',
+      to: email,
+      subject: 'Your New Verification Code - NutriSenseAI',
+      html: `<div style="text-align:center; font-family:sans-serif; border:1px solid #e2e8f0; padding:20px; border-radius:15px;">
+              <h2 style="color:#16a34a;">NutriSenseAI</h2>
+              <p>Your new verification code is:</p>
+              <h1 style="font-size:40px; letter-spacing:10px; color:#1e293b;">${newOtpCode}</h1>
+             </div>`
+    };
+
+    await transporter.sendMail(mailOptions);
+    return res.status(200).json({ success: true, message: "New OTP sent successfully" });
+
+  } catch (err) {
+    console.error("❌ Resend OTP Error:", err);
+    res.status(500).json({ error: "حدث خطأ في السيرفر أثناء إعادة الإرسال" });
   }
 };
