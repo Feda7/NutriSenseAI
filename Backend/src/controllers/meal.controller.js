@@ -10,7 +10,7 @@ exports.createMeal = async (req, res) => {
     
     // إدخال الوجبة مع قيم صفرية (0) لضمان نجاح عملية الجمع لاحقاً
     const [result] = await db.query(
-      `INSERT INTO Meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
+      `INSERT INTO meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
        VALUES (?, ?, ?, CURDATE(), 0, 0, 0, 0)`, 
       [userId, mealType, mealTime]
     );
@@ -24,38 +24,68 @@ exports.createMeal = async (req, res) => {
 exports.addFoodToMeal = async (req, res) => {
   const { mealId, foodItemId, quantity, unitId } = req.body;
   try {
-    const [foodRows] = await db.query("SELECT Calories, Protein, Carbs, Fat FROM FoodItem WHERE FoodItemID = ?", [foodItemId]);
-    const [unitRows] = await db.query(`SELECT ToGramFact FROM FoodItemServingUnit WHERE FoodItemID = ? AND UnitID = ?`, [foodItemId, unitId]);
+    // 1. جلب بيانات الصنف
+    const [foodRows] = await db.query(
+      "SELECT Calories, Protein, Carbs, Fat FROM fooditem WHERE FoodItemID = ?", 
+      [foodItemId]
+    );
     
-    const toGram = unitRows[0].ToGramFact;
+    if (!foodRows.length) {
+      return res.status(404).json({ error: "Food item not found" });
+    }
+
+    // 2. جلب معامل التحويل للجرام
+    const [unitRows] = await db.query(
+      "SELECT ToGramFact FROM fooditemservingunit WHERE FoodItemID = ? AND UnitID = ?", 
+      [foodItemId, unitId]
+    );
+    
+    const toGram = unitRows.length > 0 ? unitRows[0].ToGramFact : 1; 
     const factor = (quantity * toGram / 100);
     
-    // حساب القيم بدقة عالية قبل الإدخال
-    const cal = parseFloat((factor * foodRows[0].Calories).toFixed(2));
+    // حساب القيم المضافة حديثاً
+    const cal = parseFloat((factor * (foodRows[0].Calories || 0)).toFixed(2));
     const pro = parseFloat((factor * (foodRows[0].Protein || 0)).toFixed(2));
     const carb = parseFloat((factor * (foodRows[0].Carbs || 0)).toFixed(2));
     const fat = parseFloat((factor * (foodRows[0].Fat || 0)).toFixed(2));
 
-    // 1. إدخال الصنف
-    await db.query(
-      `INSERT INTO MealFoodItem (MealID, FoodItemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
-      [mealId, foodItemId, quantity, unitId, cal]
+    // ✨ 3. الفحص قبل الإدخال لمنع خطأ Duplicate Entry
+    const [existingItems] = await db.query(
+      "SELECT Quantity, TotalCalories FROM mealfooditem WHERE MealID = ? AND FoodItemID = ?",
+      [mealId, foodItemId]
     );
 
-    // 2. تحديث الإجمالي في جدول Meal (الجمع المباشر من قاعدة البيانات)
-    // داخل دالة addFoodToMeal، استبدلي استعلام التحديث بهذا:
-await db.query(
-  `UPDATE meal SET 
-    TotalCalories = COALESCE(TotalCalories, 0) + ?, 
-    TotalProtein = COALESCE(TotalProtein, 0) + ?, 
-    TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
-    TotalFat = COALESCE(TotalFat, 0) + ? 
-  WHERE MealID = ?`, 
-  [cal, pro, carb, fat, mealId]
-);
+    if (existingItems.length > 0) {
+      // الصنف موجود مسبقاً في الوجبة -> نقوم بتحديث الكمية والسعرات فقط
+      await db.query(
+        `UPDATE mealfooditem SET 
+          Quantity = Quantity + ?, 
+          TotalCalories = TotalCalories + ? 
+         WHERE MealID = ? AND FoodItemID = ?`,
+        [quantity, cal, mealId, foodItemId]
+      );
+    } else {
+      // الصنف غير موجود -> نقوم بإدخاله كـ سجل جديد لأول مرة
+      await db.query(
+        `INSERT INTO mealfooditem (MealID, FoodItemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
+        [mealId, foodItemId, quantity, unitId, cal]
+      );
+    }
+
+    // 4. تحديث الإجمالي التراكمي في جدول الوجبة الأساسي (meal)
+    await db.query(
+      `UPDATE meal SET 
+        TotalCalories = COALESCE(TotalCalories, 0) + ?, 
+        TotalProtein = COALESCE(TotalProtein, 0) + ?, 
+        TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
+        TotalFat = COALESCE(TotalFat, 0) + ? 
+      WHERE MealID = ?`, 
+      [cal, pro, carb, fat, mealId]
+    );
 
     res.status(201).json({ message: "Success", addedCalories: cal });
   } catch (err) {
+    console.error("❌ Add Food To Meal Error:", err);
     res.status(500).json({ error: "Database error" });
   }
 };
