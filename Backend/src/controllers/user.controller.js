@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { db, findUserByCredentials } = require('../config/db');
@@ -16,12 +17,14 @@ exports.createUser = async (req, res) => {
     // 2. توليد رقم OTP
     const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
 
+
+    const hashedPassword = await bcrypt.hash(Password, 10);
     // 3. إدخال البيانات الأساسية (isVerified = 0)
     const [result] = await db.query(`
       INSERT INTO \`user\`
       (FirstName, LastName, Email, Password, BirthDate, Gender, Height, CurrentWeight, DesiredWeight, ActiveLevelID, GoalID, JoinDate, verificationCode, isVerified)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, 0)
-    `, [FirstName, LastName, Email, Password, BirthDate, Gender, Height, CurrentWeight, DesiredWeight, ActiveLevelID, GoalID, otpCode]);
+    `, [FirstName, LastName, Email, hashedPassword, BirthDate, Gender, Height, CurrentWeight, DesiredWeight, ActiveLevelID, GoalID, otpCode]);
 
     const userId = result.insertId;
 

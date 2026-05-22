@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { db, findUserByCredentials } = require('../config/db');
@@ -66,9 +67,12 @@ exports.resetPassword = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await findUserByCredentials(email, password);
+    // 1. نبحث عن المستخدم بالإيميل فقط أولاً لنجلب بياناته والتشفير القديم
+    const [rows] = await db.query("SELECT * FROM `user` WHERE Email = ?", [email]);
+    const user = rows[0];
 
-    if (!user) {
+    // 2. التحقق من وجود المستخدم، ومقارنة كلمة السر العادية بالتشفير المحفوظ بداخل الداتا بيس
+    if (!user || !(await bcrypt.compare(password, user.Password))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
