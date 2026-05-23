@@ -22,3 +22,11 @@ logs
 .env
 .env.*
 !.env.example
+
+# AI Model weights
+*.pth
+*.pt
+
+# Python cache
+__pycache__/
+.ipynb_checkpoints/

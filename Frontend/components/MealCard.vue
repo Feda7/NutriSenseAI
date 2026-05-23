@@ -115,6 +115,22 @@ onMounted(() => {
     loadUnits();
 });
 
+const imageInput = ref(null);
+
+// 2. دالة لفتح نافذة اختيار الصور عند ضغط زر الكاميرا
+function triggerImage() {
+    imageInput.value.click();
+}
+
+// 3. دالة لمعالجة الصورة المختارة وإرسالها لصفحة food.vue
+function handleImage(event) {
+    const file = event.target.files[0];
+    if (file) {
+        // نرسل اسم الوجبة والملف
+        emit("uploadImage", props.mealName, file);
+    }
+}
+
 async function loadUnits() {
     try {
         const response = await fetch("http://localhost:5000/api/units");
