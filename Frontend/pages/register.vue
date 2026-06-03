@@ -109,23 +109,26 @@ const handleLogin = async () => {
 
     const result = await response.json()
     console.log("Login response:", result)
-    if (response.ok) {
+    //  الأسطر المحدثة والصحيحة:
+if (response.ok) {
+  console.log("Login response:", result.user)
 
-      // 🔥 تأكدنا إن السيرفر يرجع dietTypeId
-      console.log("Login response:", result.user)
+  // 1. نخزن بيانات المستخدم كاملة كما هي
+  localStorage.setItem('user', JSON.stringify(result.user))
 
-      // نخزن بيانات المستخدم كاملة
-      localStorage.setItem('user', JSON.stringify(result.user))
+  // ✨ 2. السطر السحري الجديد: استخراج الـ id الصغير وحفظه صراحةً باسم userId لتقرأه الصفحات الأخرى
+  if (result.user && result.user.id) {
+    localStorage.setItem('userId', result.user.id)
+  }
 
-      // نخزنها في state
-      const currentUser = useState('currentUser')
-      currentUser.value = result.user
+  // 3. نخزنها في state
+  const currentUser = useState('currentUser')
+  currentUser.value = result.user
 
-      alert('Logged in successfully!')
-
-      router.push('/food')
-
-    } else {
+  alert('Logged in successfully!')
+  router.push('/food')
+}
+else {
       // 🌟 التعديل الجديد: التحقق إذا كان الحساب غير مفعّل (كود الخطأ 403) 🌟
       if (response.status === 403 && result.unverified) {
         alert(result.error) // يظهر التنبيه المكتوب في الباكيند للمستخدم
