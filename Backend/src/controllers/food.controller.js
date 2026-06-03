@@ -2,7 +2,7 @@ const { db } = require('../config/db');
 
 exports.getAllFood = async (req, res) => {
   try {
-    const [rows] = await db.query(`SELECT FoodItemID, Name, Calories, Protein, Carbs, Fat FROM FoodItem`);
+    const [rows] = await db.query(`SELECT FoodItemID, Name, Calories, Protein, Carbs, Fat FROM foodItem`);
     res.json(rows);
   } catch (err) {
     console.error("Get Food Error:", err);
@@ -14,7 +14,7 @@ exports.searchFood = async (req, res) => {
   const { q } = req.query;
   try {
     if (!q) return res.json([]);
-    const [rows] = await db.query(`SELECT FoodItemID, Name, Calories, Protein, Carbs, Fat FROM FoodItem WHERE Name LIKE ?`, [`${q}%`]);
+    const [rows] = await db.query(`SELECT FoodItemID, Name, Calories, Protein, Carbs, Fat FROM foodItem WHERE Name LIKE ?`, [`${q}%`]);
     res.json(rows);
   } catch (err) {
     console.error("Search Error:", err);
@@ -24,7 +24,7 @@ exports.searchFood = async (req, res) => {
 
 exports.getUnits = async (req, res) => {
   try {
-    const [units] = await db.query(`SELECT UnitID AS unitId, Name AS name, ShortCode AS shortCode FROM ServingUnit`);
+    const [units] = await db.query(`SELECT UnitID AS unitId, Name AS name, ShortCode AS shortCode FROM servingUnit`);
     res.json(units);
   } catch (err) {
     console.error("Get Units Error:", err);
@@ -37,7 +37,7 @@ exports.getFoodUnits = async (req, res) => {
   try {
     const [units] = await db.query(`
       SELECT su.UnitID AS unitId, su.Name AS name, su.ShortCode AS shortCode, fsu.ToGramFact AS toGram
-      FROM FoodItemServingUnit fsu JOIN ServingUnit su ON fsu.UnitID = su.UnitID
+      FROM foodItemServingUnit fsu JOIN servingUnit su ON fsu.UnitID = su.UnitID
       WHERE fsu.FoodItemID = ?`, [foodId]
     );
     res.json(units);
