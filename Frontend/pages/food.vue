@@ -144,7 +144,39 @@ async function addFoodToMeal(mealName, foodItem) {
 }
 
 async function analyzeImageForMeal(mealName, imageFile) {
-    const aiResult = { foodItemId: 1, quantity: 1, unitId: 1 }; // تجريبي
-    await addFoodToMeal(mealName, aiResult);
+    try {
+        // 1. تجهيز الصورة لإرسالها كملف (Multipart Form Data)
+        const formData = new FormData();
+        formData.append('image', imageFile); 
+
+        // 2. إرسال الصورة الحقيقية إلى مسار تحليل الذكاء الاصطناعي في الباك إند
+        const response = await fetch('http://localhost:5000/api/meal/analyze-image', {
+            method: 'POST',
+            body: formData // يتم إرسال الـ FormData مباشرة بدون ترويسة Content-Type لأن المتصفح يحددها تلقائياً
+        });
+
+        if (!response.ok) {
+            throw new Error('AI analysis failed');
+        }
+
+        // 3. استقبال نتيجة التحليل الحقيقية من نموذج الـ Swin Transformer
+        const aiResult = await response.json();
+        
+        console.log("AI Analysis Result: 🥳", aiResult);
+        // النتيجة المتوقعة من الباك إند: { foodItemId: 42, quantity: 1, unitId: 1 }
+
+        // 4. استدعاء دالة الإضافة السابقة لربط الوجبة المكتشفة تلقائياً بالقسم المختار
+        await addFoodToMeal(mealName, {
+            foodItemId: aiResult.foodItemId,
+            quantity: aiResult.quantity || 1,
+            unitId: aiResult.unitId || 1
+        });
+
+        alert(`AI successfully recognized and added the meal! 🎉`);
+
+    } catch (err) {
+        console.error("AI automated analysis error:", err);
+        alert("Failed to analyze image with AI. Please try again.");
+    }
 }
 </script>
