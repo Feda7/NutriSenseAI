@@ -9,7 +9,7 @@ exports.createMeal = async (req, res) => {
                     now.getSeconds().toString().padStart(2, '0');
     
     const [result] = await db.query(
-      `INSERT INTO Meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
+      `INSERT INTO meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
        VALUES (?, ?, ?, CURDATE(), 0, 0, 0, 0)`, 
       [userId, mealType, mealTime]
     );
@@ -23,23 +23,56 @@ exports.createMeal = async (req, res) => {
 
 exports.addFoodToMeal = async (req, res) => {
   const { mealId, id, quantity, unitId } = req.body;
+  // تأمين معرف الأكلة سواء جاء باسم id أو foodItemId من الفرونت إند
+  const foodItemId = id; 
+
   try {
-    const [foodRows] = await db.query("SELECT Calories, Protein, Carbs, Fat FROM FoodItem WHERE id = ?", [id]);
-    const [unitRows] = await db.query(`SELECT ToGramFact FROM FoodItemServingUnit WHERE id = ? AND UnitID = ?`, [id, unitId]);
+    // 1. جلب بيانات الصنف
+    const [foodRows] = await db.query("SELECT Calories, Protein, Carbs, Fat FROM fooditem WHERE id = ?", [foodItemId]);
     
-    const toGram = unitRows[0].ToGramFact;
+    if (!foodRows.length) {
+      return res.status(404).json({ error: "Food item not found" });
+    }
+
+    // 2. جلب معامل التحويل للجرام
+    const [unitRows] = await db.query(
+      "SELECT ToGramFact FROM fooditemservingunit WHERE id = ? AND UnitID = ?", 
+      [foodItemId, unitId]
+    );
+    
+    const toGram = unitRows.length > 0 ? unitRows[0].ToGramFact : 1; 
     const factor = (quantity * toGram / 100);
     
-    const cal = parseFloat((factor * foodRows[0].Calories).toFixed(2));
+    // حساب القيم المضافة حديثاً
+    const cal = parseFloat((factor * (foodRows[0].Calories || 0)).toFixed(2));
     const pro = parseFloat((factor * (foodRows[0].Protein || 0)).toFixed(2));
     const carb = parseFloat((factor * (foodRows[0].Carbs || 0)).toFixed(2));
     const fat = parseFloat((factor * (foodRows[0].Fat || 0)).toFixed(2));
 
-    await db.query(
-      `INSERT INTO MealFoodItem (MealID, id, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
-      [mealId, id, quantity, unitId, cal]
+    // ✨ 3. الفحص قبل الإدخال لمنع خطأ Duplicate Entry
+    const [existingItems] = await db.query(
+      "SELECT Quantity, TotalCalories FROM mealfooditem WHERE MealID = ? AND id = ?",
+      [mealId, foodItemId]
     );
 
+    if (existingItems.length > 0) {
+      // الصنف موجود مسبقاً في الوجبة -> نقوم بتحديث الكمية والسعرات فقط
+      await db.query(
+        `UPDATE mealfooditem SET 
+           Quantity = Quantity + ?, 
+           TotalCalories = TotalCalories + ? 
+         WHERE MealID = ? AND id = ?`,
+        [quantity, cal, mealId, foodItemId]
+      );
+    } else {
+      // الصنف غير موجود -> نقوم بإدخاله كـ سجل جديد لأول مرة
+      await db.query(
+        `INSERT INTO mealfooditem (MealID, id, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
+        [mealId, foodItemId, quantity, unitId, cal]
+      );
+    }
+
+    // 4. تحديث الإجمالي التراكمي في جدول الوجبة الأساسي (meal)
     await db.query(
       `UPDATE meal SET 
          TotalCalories = COALESCE(TotalCalories, 0) + ?, 
@@ -52,6 +85,7 @@ exports.addFoodToMeal = async (req, res) => {
 
     res.status(201).json({ message: "Success", addedCalories: cal });
   } catch (err) {
+    console.error("❌ Add Food To Meal Error:", err);
     res.status(500).json({ error: "Database error" });
   }
 };
@@ -59,12 +93,12 @@ exports.addFoodToMeal = async (req, res) => {
 exports.getMeal = async (req, res) => {
   const { mealId } = req.params;
   try {
-    const [mealRows] = await db.query("SELECT * FROM Meal WHERE MealID = ?", [mealId]);
+    const [mealRows] = await db.query("SELECT * FROM meal WHERE MealID = ?", [mealId]);
     if (!mealRows.length) return res.status(404).json({ error: "Meal not found" });
 
     const [items] = await db.query(`
       SELECT f.Name AS name, mfi.Quantity AS quantity, su.ShortCode AS unit, mfi.TotalCalories AS totalCalories, f.Protein AS protein, f.Carbs AS carbs, f.Fat AS fat
-      FROM MealFoodItem mfi JOIN FoodItem f ON mfi.id = f.id JOIN ServingUnit su ON mfi.UnitID = su.UnitID
+      FROM mealfooditem mfi JOIN fooditem f ON mfi.id = f.id JOIN servingunit su ON mfi.UnitID = su.UnitID
       WHERE mfi.MealID = ?`, [mealId]
     );
     res.json({ meal: mealRows[0], items: items });
@@ -78,7 +112,7 @@ exports.getTodayMeals = async (req, res) => {
   const { userId } = req.params;
   try {
     const [meals] = await db.query(
-      `SELECT MealID, MealType, TotalCalories FROM Meal WHERE UserID = ? AND Date = CURDATE()`, 
+      `SELECT MealID, MealType, TotalCalories FROM meal WHERE UserID = ? AND Date = CURDATE()`, 
       [userId]
     );
 
@@ -87,8 +121,8 @@ exports.getTodayMeals = async (req, res) => {
         SELECT f.Name AS name, mfi.TotalCalories AS totalCalories, 
               f.Protein AS protein, f.Carbs AS carbs, f.Fat AS fat, 
               f.Fiber AS fiber, f.Sodium AS sodium, f.Cholesterol AS cholesterol
-        FROM MealFoodItem mfi 
-        JOIN FoodItem f ON mfi.id = f.id 
+        FROM mealfooditem mfi 
+        JOIN fooditem f ON mfi.id = f.id 
         WHERE mfi.MealID = ?`, [meal.MealID]
       );
       return { 
@@ -104,7 +138,6 @@ exports.getTodayMeals = async (req, res) => {
   }
 };
 
-// 🚀 تحديث دالة getHomeData لقراءة الأعمدة الحقيقية temp_ المتنوعة من قاعدة البيانات واختيارها ديناميكياً
 exports.getHomeData = async (req, res) => {
     const { userId } = req.params;
 
@@ -128,21 +161,22 @@ exports.getHomeData = async (req, res) => {
         const currentConsumed = parseFloat(consumedData[0].total || 0);
         const remaining = targetCalories - currentConsumed;
 
-// 3. جلب البيانات الحية الحقيقية مع تجميع آمن يمنع التكرار ويتوافق مع إعدادات MySQL الصارمة
-const [rawMeals] = await db.query(
-    `SELECT 
-        MAX(id) AS id, 
-        temp_name, 
-        MAX(temp_calories) AS temp_calories, 
-        MAX(temp_protein) AS temp_protein, 
-        MAX(temp_carbs) AS temp_carb, 
-        MAX(temp_fat) AS temp_fat, 
-        MAX(temp_image) AS temp_image
-     FROM food_dataset 
-     GROUP BY temp_name
-     ORDER BY RAND() 
-     LIMIT 6`
-);
+        // 3. جلب البيانات الحية الحقيقية مع تجميع آمن يمنع التكرار ويتوافق مع إعدادات MySQL الصارمة
+        const [rawMeals] = await db.query(
+            `SELECT 
+                MAX(id) AS id, 
+                temp_name, 
+                MAX(temp_calories) AS temp_calories, 
+                MAX(temp_protein) AS temp_protein, 
+                MAX(temp_carbs) AS temp_carb, 
+                MAX(temp_fat) AS temp_fat, 
+                MAX(temp_image) AS temp_image
+             FROM food_dataset 
+             GROUP BY temp_name
+             ORDER BY RAND() 
+             LIMIT 6`
+        );
+
         // 4. بناء النصائح الديناميكية
         let dynamicTips = [];
         dynamicTips.push({ 
@@ -167,7 +201,6 @@ const [rawMeals] = await db.query(
             });
         }
 
-        // 5. إرسال الكائن النظيف للفرونت إند لتظهر الوجبات والأسماء الحقيقية المدخلة مع صورها
         return res.status(200).json({
             healthTips: dynamicTips,
             suggestedMeals: rawMeals || [], 
@@ -184,7 +217,6 @@ const [rawMeals] = await db.query(
     }
 };
 
-// 🚀 تحديث دالة إضافة الوجبة المقترحة لتقرأ من مسميات temp_ الصحيحة لكي لا تفشل عملية الإدخال أو تخزن قيم صفرية
 exports.addSuggestedMeal = async (req, res) => {
     const { userId, mealId, mealType, date } = req.body;
     const connection = await db.getConnection(); 
@@ -192,10 +224,8 @@ exports.addSuggestedMeal = async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        // 1. جلب بيانات الوجبة المقترحة بناءً على الـ id المرسل
         const [catalogRows] = await connection.query("SELECT * FROM `food_dataset` WHERE id = ?", [mealId]);
         
-        // تأمين إضافي: إذا لم يجد الوجبة بالـ id الصغير، نجرب البحث بـ Id الكبير احتياطاً
         if (catalogRows.length === 0) {
             const [retryRows] = await connection.query("SELECT * FROM `food_dataset` WHERE Id = ?", [mealId]);
             if (retryRows.length === 0) throw new Error("Meal not found in food_dataset");
@@ -204,13 +234,11 @@ exports.addSuggestedMeal = async (req, res) => {
         
         const mealData = catalogRows[0];
 
-        // 2. القراءة الآمنة من الحقول الحقيقية لجدولك (تأخذ القيمة من temp_ أو القيمة العادية إن وجدت)
         const calories = mealData.temp_calories !== undefined ? mealData.temp_calories : (mealData.calories || 0);
         const protein  = mealData.temp_protein !== undefined ? mealData.temp_protein : (mealData.protein || 0);
         const carbs    = mealData.temp_carbs !== undefined ? mealData.temp_carbs : (mealData.carbs || mealData.temp_carb || 0);
         const fat      = mealData.temp_fat !== undefined ? mealData.temp_fat : (mealData.fat || 0);
 
-        // 3. إدخال البيانات في جدول الوجبات الحية الخاص بالمستخدم (meal)
         await connection.query(
             `INSERT INTO meal (UserID, MealType, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -262,4 +290,27 @@ exports.getProgressData = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: "Internal Server Error" });
     }
+};
+
+// 1. جلب كل الوجبات 
+exports.getMeals = async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM meal");
+    res.json(rows);
+  } catch (error) {
+    console.error("Fetch All Meals Error:", error);
+    res.status(500).json({ error: "Failed to fetch meals" });
+  }
+};
+
+// 2. حذف وجبة معينة
+exports.deleteMeal = async (req, res) => {
+  const id = req.params.id;
+  try {
+    await db.query("DELETE FROM meal WHERE MealID = ?", [id]);
+    res.json({ message: "Meal deleted successfully" });
+  } catch (error) {
+    console.error("Delete Meal Error:", error);
+    res.status(500).json({ error: "Delete failed" });
+  }
 };
