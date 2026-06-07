@@ -1,9 +1,9 @@
 import os
 import torch
-import timm
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from torchvision import transforms
+import timm
 from PIL import Image
 import mysql.connector
 import io
@@ -12,11 +12,11 @@ import io
 app = Flask(__name__)
 CORS(app)
 
-# الخروج خطوتين للوراء (..) و (..) للوصول إلى المجلد الأب الكبير AI_Model ومنه إلى Models
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "Models", "best_swin_food101 (4).pth")
+# 1. مسار ملف الأوزان الصحيح 
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "Models", "swin_food101_64batch_20epochs.pth")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# قائمة الأصناف
+# قائمة الأصناف الـ 101 للـ Food101
 FOOD_CLASSES = [
     'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare', 'beet_salad', 'beignets', 
     'bibimbap', 'bread_pudding', 'breakfast_burrito', 'bruschetta', 'caesar_salad', 'cannoli', 'caprese_salad', 
@@ -34,7 +34,7 @@ FOOD_CLASSES = [
     'sushi', 'tacos', 'takoyaki', 'tiramisu', 'tuna_tartare', 'waffles'
 ]
 
-# 2. إعدادات قاعدة البيانات
+# إعدادات قاعدة البيانات
 db_config = {
     'host': 'localhost',
     'user': 'root',
@@ -42,23 +42,24 @@ db_config = {
     'database': 'nutrisense_db'
 }
 
-# 3. تحميل الموديل
+# 2. إعدادات تحويل وتجهيز الصورة للموديل
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
+# 3. بناء الهيكل الصحيح المتوافق مع الأوزان (Swin Tiny) عبر مكتبة timm لـ 101 صنف
 model = timm.create_model('swin_tiny_patch4_window7_224.ms_in1k', pretrained=False, num_classes=101)
 
 try:
-    # تحميل الأوزان
+    # تحميل الأوزان الذكية والجديدة
     model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
     model.to(DEVICE)
     model.eval()
-    print("✅✅✅ ممتاز! تم تحميل الموديل بنجاح!")
+    print("✅✅✅ ممتاز! تم كشف اللغز وتحميل موديل Swin الجديد والـ 20 Epochs بنجاح باهر!")
 except Exception as e:
-    print(f"❌ خطأ: تأكدي أن ملف الموديل موجود داخل مجلد Models. التفاصيل: {e}")
+    print(f"❌ خطأ في تحميل ملف الموديل. التفاصيل: {e}")
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -78,7 +79,7 @@ def predict():
             
             food_name_en = FOOD_CLASSES[idx]
 
-        # الربط مع الداتابيز
+        # الربط مع قاعدة البيانات
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
         
@@ -106,6 +107,5 @@ def predict():
         print(f"❌ Error during prediction: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-# تشغيل السيرفر مع حماية إضافية للويندوز لمنع تعليق البورت
 if __name__ == '__main__':
     app.run(port=5050, debug=True, use_reloader=False)

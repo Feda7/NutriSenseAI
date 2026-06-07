@@ -117,12 +117,13 @@ exports.getTodayMeals = async (req, res) => {
     );
 
     const mealData = await Promise.all(meals.map(async meal => {
+      // تعديل المسميات هنا ليطابق جدول mealfooditem الفعلي الخاص بكم
       const [items] = await db.query(`
         SELECT f.Name AS name, mfi.TotalCalories AS totalCalories, 
               f.Protein AS protein, f.Carbs AS carbs, f.Fat AS fat, 
               f.Fiber AS fiber, f.Sodium AS sodium, f.Cholesterol AS cholesterol
         FROM mealfooditem mfi 
-        JOIN fooditem f ON mfi.id = f.id 
+        JOIN fooditem f ON mfi.FoodItemID = f.FoodItemID 
         WHERE mfi.MealID = ?`, [meal.MealID]
       );
       return { 
@@ -139,124 +140,58 @@ exports.getTodayMeals = async (req, res) => {
 };
 
 exports.getHomeData = async (req, res) => {
-    const { userId } = req.params;
-
-    try {
-        // 1. جلب الهدف اليومي للسعرات من جدول user
-        const [userRows] = await db.query(`
-            SELECT DailyCalories 
-            FROM user 
-            WHERE UserID = ? 
-            LIMIT 1
-        `, [userId]);
-
-        const targetCalories = userRows.length > 0 ? (userRows[0].DailyCalories || 2100) : 2100;
-
-        // 2. جلب مجموع السعرات المستهلكة اليوم من جدول meal
-        const [consumedData] = await db.query(
-            "SELECT SUM(TotalCalories) as total FROM meal WHERE UserID = ? AND Date = CURDATE()", 
-            [userId]
-        );
-        
-        const currentConsumed = parseFloat(consumedData[0].total || 0);
-        const remaining = targetCalories - currentConsumed;
-
-        // 3. جلب البيانات الحية الحقيقية مع تجميع آمن يمنع التكرار ويتوافق مع إعدادات MySQL الصارمة
-        const [rawMeals] = await db.query(
-            `SELECT 
-                MAX(id) AS id, 
-                temp_name, 
-                MAX(temp_calories) AS temp_calories, 
-                MAX(temp_protein) AS temp_protein, 
-                MAX(temp_carbs) AS temp_carb, 
-                MAX(temp_fat) AS temp_fat, 
-                MAX(temp_image) AS temp_image
-             FROM food_dataset 
-             GROUP BY temp_name
-             ORDER BY RAND() 
-             LIMIT 6`
-        );
-
-        // 4. بناء النصائح الديناميكية
-        let dynamicTips = [];
-        dynamicTips.push({ 
-            emoji: "🌟", 
-            text: "Consistency is key! Every healthy choice you make today brings you closer to your goal." 
-        });
-
-        if (currentConsumed === 0) {
-            dynamicTips.push({ 
-                emoji: "🍎", 
-                text: `You have ${targetCalories} calories for today. Start by logging your first meal!` 
-            });
-        } else if (currentConsumed < targetCalories) {
-            dynamicTips.push({ 
-                emoji: "📊", 
-                text: `You have consumed ${currentConsumed.toFixed(1)} calories. You still have ${Math.max(0, remaining).toFixed(0)} calories left.` 
-            });
-        } else {
-            dynamicTips.push({ 
-                emoji: "⚠️", 
-                text: `You've reached your limit of ${targetCalories} calories. Focus on hydration now!` 
-            });
-        }
-
-        return res.status(200).json({
-            healthTips: dynamicTips,
-            suggestedMeals: rawMeals || [], 
-            summary: {
-                total: targetCalories,
-                consumed: currentConsumed,
-                remaining: remaining > 0 ? remaining : 0
-            }
-        });
-
-    } catch (error) {
-        console.error("Home Data Error:", error);
-        return res.status(500).json({ message: "Internal Server Error", error: error.message });
-    }
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+        FoodItemID AS id, 
+        Name AS temp_name, 
+        Calories AS temp_calories, 
+        Protein AS temp_protein, 
+        Carbs AS temp_carb, 
+        Fat AS temp_fat,
+        ModelLabel AS temp_image
+       FROM fooditem 
+       ORDER BY RAND() \n` +
+      '       LIMIT 6'
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error("❌ Home Data Error:", err);
+    return res.status(500).json({ error: 'Failed to fetch home data suggestions' });
+  }
 };
 
 exports.addSuggestedMeal = async (req, res) => {
-    const { userId, mealId, mealType, date } = req.body;
-    const connection = await db.getConnection(); 
-
-    try {
-        await connection.beginTransaction();
-
-        const [catalogRows] = await connection.query("SELECT * FROM `food_dataset` WHERE id = ?", [mealId]);
-        
-        if (catalogRows.length === 0) {
-            const [retryRows] = await connection.query("SELECT * FROM `food_dataset` WHERE Id = ?", [mealId]);
-            if (retryRows.length === 0) throw new Error("Meal not found in food_dataset");
-            catalogRows.push(retryRows[0]);
-        }
-        
-        const mealData = catalogRows[0];
-
-        const calories = mealData.temp_calories !== undefined ? mealData.temp_calories : (mealData.calories || 0);
-        const protein  = mealData.temp_protein !== undefined ? mealData.temp_protein : (mealData.protein || 0);
-        const carbs    = mealData.temp_carbs !== undefined ? mealData.temp_carbs : (mealData.carbs || mealData.temp_carb || 0);
-        const fat      = mealData.temp_fat !== undefined ? mealData.temp_fat : (mealData.fat || 0);
-
-        await connection.query(
-            `INSERT INTO meal (UserID, MealType, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [userId, mealType, date, calories, protein, carbs, fat]
-        );
-        
-        await connection.commit();
-        res.status(201).json({ message: "Suggested meal added successfully! 🎉" });
-
-    } catch (err) {
-        await connection.rollback();
-        console.error("❌ Add Suggested Error:", err);
-        res.status(500).json({ error: err.message });
-    } finally {
-        connection.release();
+  const { userId, mealType, foodItemId } = req.body;
+  try {
+    const [foodRows] = await db.query('SELECT * FROM fooditem WHERE FoodItemID = ?', [foodItemId]);
+    if (foodRows.length === 0) {
+      return res.status(404).json({ error: 'Suggested food item not found' });
     }
-};
 
+    const food = foodRows;
+    const now = new Date();
+    const mealTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0') + ':00';
+
+    const [mealResult] = await db.query(
+      `INSERT INTO meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
+       VALUES (?, ?, ?, CURDATE(), ?, ?, ?, ?)`,
+      [userId, mealType, mealTime, food.Calories, food.Protein, food.Carbs, food.Fat]
+    );
+
+    const mealId = mealResult.insertId;
+
+    await db.query(
+      'INSERT INTO mealfooditem (MealID, FooditemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, 1, 1, ?)',
+      [mealId, foodItemId, food.Calories]
+    );
+
+    return res.status(201).json({ message: 'Suggested meal logged successfully!' });
+  } catch (err) {
+    console.error("❌ Add Suggested Error:", err);
+    return res.status(500).json({ error: 'Failed to log suggested meal' });
+  }
+};
 exports.getProgressData = async (req, res) => {
     const { userId } = req.params;
     try {
@@ -312,5 +247,74 @@ exports.deleteMeal = async (req, res) => {
   } catch (error) {
     console.error("Delete Meal Error:", error);
     res.status(500).json({ error: "Delete failed" });
+  }
+};
+exports.addMealByAIName = async (req, res) => {
+  const { userId, mealType, modelLabel } = req.body;
+
+  try {
+    const formattedLabel = modelLabel.replace(/_/g, ' ');
+
+    // 1. جلب السجل بالبحث المرن
+    const [foodRows] = await db.query(
+      `SELECT * FROM fooditem 
+       WHERE ModelLabel = ? OR ModelLabel = ? OR Name = ? OR Name = ? LIMIT 1`, 
+      [modelLabel, formattedLabel, modelLabel, formattedLabel]
+    );
+
+    let foodItemId = 1; 
+    let cal = 400;
+    let pro = 25;
+    let carb = 45;
+    let fat = 10;
+    let foodRealName = formattedLabel; // حفظ اسم الأكلة الحقيقي لإرجاعه للتنبيه
+
+    // 2. مطابقة المسميات من الداتابيس
+    if (foodRows.length) {
+      const row = foodRows[0];
+      
+      // مطابقة مرنة للمعرف بناء على صورة الجدول الحقيقية
+      foodItemId = row.FooditemID || row.FoodItemID || row.fooditemid || row.id || 1;
+      foodRealName = row.Name || row.name || formattedLabel;
+      
+      cal = parseFloat(row.Calories || row.calories || 0);
+      pro = parseFloat(row.Protein || row.protein || 0);
+      carb = parseFloat(row.Carbs || row.carbs || row.carb || 0);
+      fat = parseFloat(row.Fat || row.fat || 0);
+      
+      console.log(`✅ [AI Database Match] Found item: ${foodRealName}, ID: ${foodItemId}`);
+    }
+
+    const now = new Date();
+    const mealTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                     now.getMinutes().toString().padStart(2, '0') + ':' + 
+                     now.getSeconds().toString().padStart(2, '0');
+
+    // 3. إدخال الوجبة الرئيسية في جدول meal
+    const [mealResult] = await db.query(
+      `INSERT INTO meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
+       VALUES (?, ?, ?, CURDATE(), ?, ?, ?, ?)`, 
+      [userId, mealType, mealTime, cal, pro, carb, fat]
+    );
+
+    const mealId = mealResult.insertId;
+
+    // 4. الربط في جدول mealfooditem المطابق تماماً لـ image_00e101.png بحرف i سمول
+    await db.query(
+      `INSERT INTO mealfooditem (MealID, FooditemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, 1, 1, ?)`, 
+      [mealId, foodItemId, cal]
+    );
+
+    // إرسال اسم الأكل الحقيقي (foodRealName) في الاستجابة للفرونت إند لطباعته في الـ Alert
+    return res.status(201).json({ 
+      message: `AI successfully recognized and registered your ${foodRealName}! 🎉`,
+      foodName: foodRealName,
+      mealId: mealId,
+      foodItemId: foodItemId
+    });
+
+  } catch (err) {
+    console.error("❌ AI Meal Logging Database Error:", err);
+    return res.status(500).json({ error: 'Database error occurred while saving AI meal' });
   }
 };

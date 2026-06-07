@@ -145,38 +145,72 @@ async function addFoodToMeal(mealName, foodItem) {
 
 async function analyzeImageForMeal(mealName, imageFile) {
     try {
-        // 1. تجهيز الصورة لإرسالها كملف (Multipart Form Data)
+        const userId = getUserId();
+        if (!userId) return;
+
+        // 1. إرسال الصورة مباشرة لسيرفر البايثون (بورت 5050)
         const formData = new FormData();
         formData.append('image', imageFile); 
 
-        // 2. إرسال الصورة الحقيقية إلى مسار تحليل الذكاء الاصطناعي في الباك إند
-        const response = await fetch('http://localhost:5000/api/meal/analyze-image', {
+        const aiResponse = await fetch('http://localhost:5050/predict', {
             method: 'POST',
-            body: formData // يتم إرسال الـ FormData مباشرة بدون ترويسة Content-Type لأن المتصفح يحددها تلقائياً
+            body: formData 
         });
 
-        if (!response.ok) {
+        if (!aiResponse.ok) {
             throw new Error('AI analysis failed');
         }
 
-        // 3. استقبال نتيجة التحليل الحقيقية من نموذج الـ Swin Transformer
-        const aiResult = await response.json();
-        
-        console.log("AI Analysis Result: 🥳", aiResult);
-        // النتيجة المتوقعة من الباك إند: { foodItemId: 42, quantity: 1, unitId: 1 }
+        const aiResult = await aiResponse.json();
+        console.log("AI Recognized: 🥳", aiResult.class_name); // الكلمة الراجعة من الموديل، مثل pizza
 
-        // 4. استدعاء دالة الإضافة السابقة لربط الوجبة المكتشفة تلقائياً بالقسم المختار
-        await addFoodToMeal(mealName, {
-            foodItemId: aiResult.foodItemId,
-            quantity: aiResult.quantity || 1,
-            unitId: aiResult.unitId || 1
+        // 2. إرسال اسم الوجبة النصي إلى الباكيند Node.js ليتم البحث والتخزين بالداتابيز
+        const backendResponse = await fetch('http://localhost:5000/api/meal/add-by-ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: userId,
+                mealType: mealName,
+                modelLabel: aiResult.class_name // الاسم القادم من البايثون
+            })
         });
 
-        alert(`AI successfully recognized and added the meal! 🎉`);
+        if (!backendResponse.ok) {
+            const errData = await backendResponse.json();
+            throw new Error(errData.error || 'Backend logging failed');
+        }
+
+        const finalResult = await backendResponse.json();
+
+        // 3. تحديث مصفوفة الوجبات والقراءات في الواجهة فوراً دون الحاجة لتحديث الصفحة
+        if (!meals.value[mealName.toLowerCase()]) {
+            meals.value[mealName.toLowerCase()] = [];
+        }
+        
+        // جلب الوجبات المحدثة لليوم لضمان المزامنة التامة
+        const mealRes = await fetch(`http://localhost:5000/api/meal/today/${userId}`);
+        if (mealRes.ok) {
+            const data = await mealRes.json();
+            data.forEach(meal => {
+                const type = meal.mealType?.toLowerCase();
+                if (meals.value[type] !== undefined) {
+                    mealIds.value[type] = meal.mealId;
+                    meals.value[type] = meal.items || [];
+                }
+            });
+            recalcSummary();
+        }
+
+        // ✨ التعديل السحري والذكي للاعلام هنا ✨
+        // نأخذ الاسم الحقيقي الراجع من الباكيند، وإذا لم يتوفر ننظف الاسم القادم من موديل البايثون
+        const detectedFood = finalResult.foodName || (aiResult.class_name ? aiResult.class_name.replace(/_/g, ' ') : 'meal');
+        
+        // طباعة التنبيه بالاسم الحقيقي للأكلة المقروءة ديناميكياً
+        alert(`AI successfully recognized and registered your ${detectedFood}! 🎉`);
 
     } catch (err) {
         console.error("AI automated analysis error:", err);
-        alert("Failed to analyze image with AI. Please try again.");
+        alert(err.message || "Failed to analyze image with AI. Please try again.");
     }
 }
 </script>
