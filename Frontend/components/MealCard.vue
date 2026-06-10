@@ -196,8 +196,10 @@ function addFood() {
         cholesterol: selectedFood.value.Cholesterol * quantity.value,
     };
 
+    // إرسال البيانات المحدثة بالكامل للـ الباك إند والصفحة الرئيسية
     emit("addFood", props.mealName, foodData);
 
+    // إعادة تصفير الحقول بعد الحفظ
     manualInput.value = false;
     search.value = "";
     selectedFood.value = null;
