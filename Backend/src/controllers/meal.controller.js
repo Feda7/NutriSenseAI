@@ -22,13 +22,12 @@ exports.createMeal = async (req, res) => {
 };
 
 exports.addFoodToMeal = async (req, res) => {
-  const { mealId, id, quantity, unitId } = req.body;
+  const { mealId, foodItemId, quantity, unitId } = req.body;
   // تأمين معرف الأكلة سواء جاء باسم id أو foodItemId من الفرونت إند
-  const foodItemId = id; 
 
   try {
     // 1. جلب بيانات الصنف
-    const [foodRows] = await db.query("SELECT Calories, Protein, Carbs, Fat FROM fooditem WHERE id = ?", [foodItemId]);
+    const [foodRows] = await db.query("SELECT Calories, Protein, Carbs, Fat FROM fooditem WHERE FoodItemID = ?", [foodItemId]);
     
     if (!foodRows.length) {
       return res.status(404).json({ error: "Food item not found" });
@@ -36,7 +35,7 @@ exports.addFoodToMeal = async (req, res) => {
 
     // 2. جلب معامل التحويل للجرام
     const [unitRows] = await db.query(
-      "SELECT ToGramFact FROM fooditemservingunit WHERE id = ? AND UnitID = ?", 
+      "SELECT ToGramFact FROM fooditemservingunit WHERE foodItemId = ? AND UnitID = ?", 
       [foodItemId, unitId]
     );
     
@@ -51,7 +50,7 @@ exports.addFoodToMeal = async (req, res) => {
 
     // ✨ 3. الفحص قبل الإدخال لمنع خطأ Duplicate Entry
     const [existingItems] = await db.query(
-      "SELECT Quantity, TotalCalories FROM mealfooditem WHERE MealID = ? AND id = ?",
+      "SELECT Quantity, TotalCalories FROM mealfooditem WHERE MealID = ? AND foodItemId = ?",
       [mealId, foodItemId]
     );
 
@@ -59,15 +58,15 @@ exports.addFoodToMeal = async (req, res) => {
       // الصنف موجود مسبقاً في الوجبة -> نقوم بتحديث الكمية والسعرات فقط
       await db.query(
         `UPDATE mealfooditem SET 
-           Quantity = Quantity + ?, 
-           TotalCalories = TotalCalories + ? 
-         WHERE MealID = ? AND id = ?`,
+          Quantity = Quantity + ?, 
+          TotalCalories = TotalCalories + ? 
+        WHERE MealID = ? AND foodItemId = ?`,
         [quantity, cal, mealId, foodItemId]
       );
     } else {
       // الصنف غير موجود -> نقوم بإدخاله كـ سجل جديد لأول مرة
       await db.query(
-        `INSERT INTO mealfooditem (MealID, id, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
+        `INSERT INTO mealfooditem (MealID, foodItemId, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
         [mealId, foodItemId, quantity, unitId, cal]
       );
     }
@@ -75,11 +74,11 @@ exports.addFoodToMeal = async (req, res) => {
     // 4. تحديث الإجمالي التراكمي في جدول الوجبة الأساسي (meal)
     await db.query(
       `UPDATE meal SET 
-         TotalCalories = COALESCE(TotalCalories, 0) + ?, 
-         TotalProtein = COALESCE(TotalProtein, 0) + ?, 
-         TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
-         TotalFat = COALESCE(TotalFat, 0) + ? 
-       WHERE MealID = ?`, 
+        TotalCalories = COALESCE(TotalCalories, 0) + ?, 
+        TotalProtein = COALESCE(TotalProtein, 0) + ?, 
+        TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
+        TotalFat = COALESCE(TotalFat, 0) + ? 
+      WHERE MealID = ?`, 
       [cal, pro, carb, fat, mealId]
     );
 
@@ -96,11 +95,23 @@ exports.getMeal = async (req, res) => {
     const [mealRows] = await db.query("SELECT * FROM meal WHERE MealID = ?", [mealId]);
     if (!mealRows.length) return res.status(404).json({ error: "Meal not found" });
 
-    const [items] = await db.query(`
-      SELECT f.Name AS name, mfi.Quantity AS quantity, su.ShortCode AS unit, mfi.TotalCalories AS totalCalories, f.Protein AS protein, f.Carbs AS carbs, f.Fat AS fat
-      FROM mealfooditem mfi JOIN fooditem f ON mfi.id = f.id JOIN servingunit su ON mfi.UnitID = su.UnitID
-      WHERE mfi.MealID = ?`, [mealId]
-    );
+    const query = `
+    SELECT 
+        f.Name AS name, 
+        mfi.Quantity AS quantity, 
+        su.ShortCode AS unit, 
+        mfi.TotalCalories AS totalCalories,
+        -- حساب الماكروز ديناميكياً بناءً على نسبة السعرات الإجمالية إلى السعرات الأساسية لكل 100 جرام
+        ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Protein, 0), 2) AS protein,
+        ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Carbs, 0), 2) AS carbs,
+        ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Fat, 0), 2) AS fat
+    FROM mealfooditem mfi 
+    JOIN fooditem f ON mfi.FoodItemID = f.FoodItemID 
+    JOIN servingunit su ON mfi.UnitID = su.UnitID
+    WHERE mfi.MealID = ?
+`;
+const [items] = await db.query(query, [mealId]);
+
     res.json({ meal: mealRows[0], items: items });
   } catch (err) {
     console.error("Get Meal Error:", err);
