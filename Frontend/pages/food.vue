@@ -145,38 +145,88 @@ async function addFoodToMeal(mealName, foodItem) {
 
 async function analyzeImageForMeal(mealName, imageFile) {
     try {
-        // 1. تجهيز الصورة لإرسالها كملف (Multipart Form Data)
+        const userId = getUserId();
+        if (!userId) return;
+
+        // 1. Send image directly to Python AI Server (Port 5050)
         const formData = new FormData();
         formData.append('image', imageFile); 
 
-        // 2. إرسال الصورة الحقيقية إلى مسار تحليل الذكاء الاصطناعي في الباك إند
-        const response = await fetch('http://localhost:5000/api/meal/analyze-image', {
+        const aiResponse = await fetch('http://localhost:5050/predict', {
             method: 'POST',
-            body: formData // يتم إرسال الـ FormData مباشرة بدون ترويسة Content-Type لأن المتصفح يحددها تلقائياً
+            body: formData 
         });
 
-        if (!response.ok) {
+        if (!aiResponse.ok) {
             throw new Error('AI analysis failed');
         }
 
-        // 3. استقبال نتيجة التحليل الحقيقية من نموذج الـ Swin Transformer
-        const aiResult = await response.json();
-        
-        console.log("AI Analysis Result: 🥳", aiResult);
-        // النتيجة المتوقعة من الباك إند: { foodItemId: 42, quantity: 1, unitId: 1 }
+        const aiResult = await aiResponse.json();
+        const foodLabel = aiResult.class_name ? aiResult.class_name.replace(/_/g, ' ') : 'Food Item';
+        console.log("AI Recognized: 🥳", foodLabel); 
 
-        // 4. استدعاء دالة الإضافة السابقة لربط الوجبة المكتشفة تلقائياً بالقسم المختار
-        await addFoodToMeal(mealName, {
-            foodItemId: aiResult.foodItemId,
-            quantity: aiResult.quantity || 1,
-            unitId: aiResult.unitId || 1
+        // 🌟 Supervisor's Feature: Prompt user for serving portion size based on database units
+        const userInput = prompt(
+            `AI successfully recognized: "${foodLabel}" 🍕\n\n` +
+            `Please specify how much you actually consumed.\n` +
+            `Available serving metrics: (g, cup, tbsp, tsp, pc, slice)\n\n` +
+            `Enter amount (e.g., 1 for full portion, 0.5 for half, or number of pieces/grams):`, 
+            "1"
+        );
+        
+        // If user clicks "Cancel" or leaves it empty, exit safely
+        if (userInput === null) {
+            console.log("User cancelled meal logging.");
+            return;
+        }
+
+        // Convert the input into a floating number, default to 1 if invalid
+        const finalQuantity = parseFloat(userInput) || 1;
+
+        // 2. Send the meal name and custom portion size to Node.js Backend
+        const backendResponse = await fetch('http://localhost:5000/api/meal/add-by-ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: userId,
+                mealType: mealName,
+                modelLabel: aiResult.class_name, 
+                quantity: finalQuantity          // 🌟 Custom quantity sent to backend calculation
+            })
         });
 
-        alert(`AI successfully recognized and added the meal! 🎉`);
+        if (!backendResponse.ok) {
+            const errData = await backendResponse.json();
+            throw new Error(errData.error || 'Backend logging failed');
+        }
+
+        const finalResult = await backendResponse.json();
+
+        // 3. Update interface meals arrays and summary reactively without reloading page
+        if (!meals.value[mealName.toLowerCase()]) {
+            meals.value[mealName.toLowerCase()] = [];
+        }
+        
+        // Fetch updated logs from server to ensure perfect synchronization
+        const mealRes = await fetch(`http://localhost:5000/api/meal/today/${userId}`);
+        if (mealRes.ok) {
+            const data = await mealRes.json();
+            data.forEach(meal => {
+                const type = meal.mealType?.toLowerCase();
+                if (meals.value[type] !== undefined) {
+                    mealIds.value[type] = meal.mealId;
+                    meals.value[type] = meal.items || [];
+                }
+            });
+            recalcSummary();
+        }
+
+        const detectedFood = finalResult.foodName || foodLabel;
+        alert(`Success! Logged (${finalQuantity}) serving of ${detectedFood} to your ${mealName}. 🎉`);
 
     } catch (err) {
         console.error("AI automated analysis error:", err);
-        alert("Failed to analyze image with AI. Please try again.");
+        alert(err.message || "Failed to analyze image with AI. Please try again.");
     }
 }
 </script>
