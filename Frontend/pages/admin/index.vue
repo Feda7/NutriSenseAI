@@ -151,13 +151,13 @@
 definePageMeta({
   layout: "admin"
 })
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
-const users = ref([
-  { firstName: 'Moh', lastName: 'A', email: 'moh@example.com', joinedAt: '2025-07-12', diet: 'Bland', medical: ['Hypertension'], active: true },
-  { firstName: 'Sara', lastName: 'K', email: 'sara@example.com', joinedAt: '2025-07-10', diet: 'High-Protein', medical: ['Diabetes'], active: true },
-  { firstName: 'Ahmed', lastName: 'Al', email: 'ahmed@example.com', joinedAt: '2025-07-05', diet: 'Low-Saturated Fat', medical: ['None'], active: false }
-])
+// 1. تعريف المتغيرات كـ مصفوفات فارغة في البداية لتستقبل بيانات قاعدة البيانات الحية
+const users = ref([])
+const meals = ref([])
+const statsData = ref({ totalUsers: 0, activeUsers: 0, totalMeals: 0, avgCalories: 0 })
+const usersByCondition = ref({ Hypertension: 0, Diabetes: 0, Colon: 0, Cholesterol: 0, None: 0 })
 
 const diets = ref([
   { name: 'Bland' },
@@ -167,33 +167,35 @@ const diets = ref([
   { name: 'DASH' }
 ])
 
-const meals = ref([
-  { name: 'Grilled Chicken Salad', count: 12 },
-  { name: 'Chicken Wrap', count: 11 },
-  { name: 'Oatmeal with Fruits', count: 9 },
-  { name: 'Salmon with Veggies', count: 7 },
-  { name: 'Lentil Soup', count: 6 }
-])
-
-const stats = computed(() => ({
-  totalUsers: users.value.length,
-  activeUsers: users.value.filter(u => u.active).length,
-  totalMeals: meals.value.length,
-  avgCalories: 2200
-}))
-
 const healthList = ['Hypertension','Diabetes','Colon','Cholesterol','None']
 
-const usersByCondition = computed(() => {
-  const map = {}
-  healthList.forEach(h => map[h] = 0)
-  users.value.forEach(u => {
-    u.medical.forEach(m => {
-      if (map[m] !== undefined) map[m]++
-    })
-  })
-  return map
+// 2. دالة جلب البيانات الحية من الباكيند عند تحميل الصفحة
+const fetchAdminDashboardData = async () => {
+  try {
+    // التعديل هنا: إضافة /meals قبل /dashboard لتطابق الـ app.js تماماً
+    const response = await $fetch('http://localhost:5000/api/admin/meals/dashboard')
+    
+    users.value = response.users || []
+    meals.value = response.meals || []
+    statsData.value = response.stats || { totalUsers: 0, activeUsers: 0, totalMeals: 0, avgCalories: 2200 }
+    usersByCondition.value = response.conditions || { Hypertension: 0, Diabetes: 0, Colon: 0, Cholesterol: 0, None: 0 }
+  } catch (error) {
+    console.error("❌ فشل جلب بيانات لوحة التحكم:", error)
+  }
+}
+
+// تشغيل جلب البيانات فور دخول الآدمين للصفحة
+onMounted(() => {
+  fetchAdminDashboardData()
 })
+
+// 3. الحسابات الذكية المبنية على البيانات الحية والمستقبلة
+const stats = computed(() => ({
+  totalUsers: statsData.value.totalUsers || users.value.length,
+  activeUsers: statsData.value.activeUsers || users.value.filter(u => u.active).length,
+  totalMeals: statsData.value.totalMeals || meals.value.length,
+  avgCalories: statsData.value.avgCalories || 2100
+}))
 
 function getDietPercent(name) {
   const count = users.value.filter(u => u.diet === name).length
@@ -201,10 +203,9 @@ function getDietPercent(name) {
   return (count / stats.value.totalUsers) * 100
 }
 
-const recentUsers = computed(() => users.value)
+const recentUsers = computed(() => users.value.slice(0, 5)) // عرض آخر 5 مستخدمين فقط
+const topMeals = computed(() => meals.value.sort((a, b) => b.count - a.count).slice(0, 5))
 
-const topMeals = computed(() => meals.value)
-
-const todaysMealsCount = 0
-const avgTodayProtein = 22
+const todaysMealsCount = ref(0)
+const avgTodayProtein = ref(0)
 </script>

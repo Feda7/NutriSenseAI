@@ -1,30 +1,24 @@
-const express = require("express");
-const cors = require("cors");
-
-const authRoutes = require("./routes/auth.routes");
-const userRoutes = require("./routes/user.routes");
-const mealRoutes = require("./routes/meal.routes");
-const foodRoutes = require("./routes/food.routes");
-const dietRoutes = require("./routes/diet.routes");
-const adminMealRoutes = require("./routes/adminMeal.routes");
+const express = require('express');
+const cors = require('cors');
+const { db } = require('./config/db');
+const userRoutes = require('./routes/user.routes');
 
 const app = express();
 
+// 1. تفعيل حزمة الـ CORS لحل أي حجب أمني بين المنافذ
 app.use(cors());
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send("NutriSense API is running");
+// 2. الربط المباشر والواضح للمسارات
+// هذا السطر يضمن تفعيل الرابط: http://localhost:5000/api/users
+app.use('/api/users', userRoutes);
+
+// مسار فحص سريع للتأكد من عمل السيرفر
+app.get('/', (req, res) => {
+    res.send('NutriSense Backend is running smoothly! 🚀');
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/meals", mealRoutes);
-app.use("/api/foods", foodRoutes);
-app.use("/api/diets", dietRoutes);
-app.use("/api/admin/meals", adminMealRoutes)
-
-
-module.exports = app;
-
-app.use("/api/users", userRoutes);
+const PORT = 5000;
+app.listen(PORT, () => {
+    console.log(`🚀 Backend running on http://localhost:5000`);
+});

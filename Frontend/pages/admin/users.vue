@@ -9,7 +9,7 @@ const users = ref([])
 
 const getUsers = async () => {
   try {
-const res = await fetch("http://localhost:5000/api/users")
+    const res = await fetch("http://localhost:5000/api/users")
     const data = await res.json()
     users.value = data
   } catch (error) {
@@ -18,13 +18,15 @@ const res = await fetch("http://localhost:5000/api/users")
 }
 
 const deleteUser = async (id) => {
-  try {
-await fetch(`http://localhost:5000/api${id}`, {
-        method: "DELETE"
-    })
-    getUsers()
-  } catch (error) {
-    console.error("Error deleting user:", error)
+  if (confirm("هل أنتِ متأكدة من حذف هذا المستخدم نهائياً؟")) {
+    try {
+      await fetch(`http://localhost:5000/api/users/${id}`, {
+          method: "DELETE"
+      })
+      getUsers() // إعادة تحديث الجدول فوراً بعد الحذف بنجاح
+    } catch (error) {
+      console.error("Error deleting user:", error)
+    }
   }
 }
 
@@ -36,19 +38,18 @@ onMounted(() => {
 <template>
   <div>
     <header class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-bold text-gray-800">Users</h2>
+      <h2 class="text-2xl font-bold text-gray-800">Users Management</h2>
     </header>
 
     <div class="bg-white rounded-2xl shadow p-6">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-
+        <table class="w-full text-sm text-left">
           <thead>
-            <tr class="text-left border-b text-gray-500">
+            <tr class="border-b text-gray-500">
               <th class="pb-3">ID</th>
               <th class="pb-3">Name</th>
               <th class="pb-3">Email</th>
-              <th class="pb-3">Status</th>
+              <th class="pb-3">Gender</th>
               <th class="pb-3 text-right">Action</th>
             </tr>
           </thead>
@@ -56,33 +57,24 @@ onMounted(() => {
           <tbody>
             <tr
               v-for="u in users"
-              :key="u.UserID"
-              class="border-b last:border-none"
+              :key="u.id"
+              class="border-b last:border-none hover:bg-gray-50 transition"
             >
-              <td class="py-3">{{ u.UserID }}</td>
-
-              <td class="py-3 font-medium">
-                {{ u.FirstName }} {{ u.LastName }}
-              </td>
-
-              <td class="py-3 text-gray-600">
-                {{ u.Email }}
-              </td>
-
+              <td class="py-3">{{ u.id }}</td>
+              <td class="py-3 font-medium">{{ u.name }}</td>
+              <td class="py-3 text-gray-600">{{ u.email }}</td>
               <td class="py-3">
-                <span
-                  :class="u.Active == 1
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-red-100 text-red-600'"
-                  class="text-xs px-2 py-1 rounded-full"
+                <span 
+                  :class="u.gender === 'Female' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'"
+                  class="text-xs px-2 py-1 rounded-full font-medium capitalize"
                 >
-                  {{ u.Active == 1 ? 'Active' : 'Inactive' }}
+                  {{ u.gender || 'Not Specified' }}
                 </span>
               </td>
 
               <td class="py-3 text-right">
                 <button
-                  @click="deleteUser(u.UserID)"
+                  @click="deleteUser(u.id)"
                   class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1 rounded-lg transition"
                 >
                   Delete
@@ -90,8 +82,12 @@ onMounted(() => {
               </td>
             </tr>
           </tbody>
-
         </table>
+
+        <div v-if="users.length === 0" class="text-center py-8 text-gray-400">
+          <span class="block text-2xl mb-2">👥</span>
+          No Registered Users Found.
+        </div>
       </div>
     </div>
   </div>
