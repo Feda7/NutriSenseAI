@@ -185,7 +185,7 @@ function addFood() {
         foodItemId: selectedFood.value.FoodItemID,
         quantity: quantity.value,
         unitId: unitId.value,
-
+        
         name: selectedFood.value.Name,
         totalCalories: selectedFood.value.Calories * quantity.value,
         protein: selectedFood.value.Protein * quantity.value,
