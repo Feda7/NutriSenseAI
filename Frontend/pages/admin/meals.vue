@@ -1,79 +1,52 @@
 <template>
   <div class="min-h-screen bg-gray-100 flex">
-    
     <main class="flex-1 p-8">
+      
+      <header class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">User Meals Log</h2>
+        <p class="text-sm text-gray-500">Monitor and audit daily meal registrations across the system</p>
+      </header>
 
-      <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Meals Library</h2>
-        <p class="text-sm text-gray-500">Manage and audit the food recipes and macro distributions</p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-        <div
-          v-for="meal in meals"
-          :key="meal.MealID"
-          class="bg-white rounded-2xl shadow-sm p-5 flex gap-4 border border-gray-100 hover:shadow-md transition duration-200"
-        >
-
-          <div class="w-24 h-24 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-            <img
-              v-if="meal.ImagePath"
-              :src="meal.ImagePath"
-              class="w-full h-full object-cover"
-              alt="meal image"
-            />
-            <div
-              v-else
-              class="text-gray-400 text-xs flex flex-col items-center justify-center h-full gap-1"
-            >
-              <span class="text-lg">🍲</span>
-              <span>No Image</span>
-            </div>
-          </div>
-
-          <div class="flex flex-col justify-between flex-1">
-            <div>
-              <h3 class="font-bold text-gray-800 text-base line-clamp-1">
-                {{ meal.Name }}
-              </h3>
-
-              <div class="mt-1">
-                <span class="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-md">
-                  {{ meal.Calories }} kcal
+      <div class="bg-white rounded-2xl shadow p-6 overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b text-gray-400 text-xs uppercase bg-gray-50">
+              <th class="p-3">Meal ID</th>
+              <th class="p-3">User</th>
+              <th class="p-3">Meal Type</th>
+              <th class="p-3">Calories</th>
+              <th class="p-3">Date</th>
+              <th class="p-3 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody class="text-sm text-gray-700">
+            <tr v-for="meal in meals" :key="meal.MealID" class="border-b last:border-none hover:bg-gray-50">
+              <td class="p-3 font-semibold text-gray-500">#{{ meal.MealID }}</td>
+              <td class="p-3 font-medium text-gray-800">
+                {{ meal.FirstName ? `${meal.FirstName} ${meal.LastName}` : 'Unknown User' }}
+              </td>
+              <td class="p-3">
+                <span class="px-2 py-1 text-xs rounded-full bg-blue-50 text-blue-600 capitalize">
+                  {{ meal.MealType || 'N/A' }}
                 </span>
-              </div>
+              </td>
+              <td class="p-3 font-semibold text-green-600">🔥 {{ meal.TotalCalories }} kcal</td>
+              <td class="p-3 text-gray-500 text-xs">{{ formatDate(meal.Date) }}</td>
+              <td class="p-3 text-center">
+                <button @click="removeMeal(meal.MealID)" class="text-red-500 hover:text-red-700 text-xs font-medium">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-              <div class="flex gap-2 mt-3 text-xs">
-                <span class="px-2 py-0.5 bg-blue-50 text-blue-600 rounded font-medium">P: {{ meal.Protein }}g</span>
-                <span class="px-2 py-0.5 bg-amber-50 text-amber-600 rounded font-medium">C: {{ meal.Carbs }}g</span>
-                <span class="px-2 py-0.5 bg-red-50 text-red-600 rounded font-medium">F: {{ meal.Fat }}g</span>
-              </div>
-            </div>
-
-            <div class="flex justify-end mt-2">
-              <button
-                @click="deleteMeal(meal.MealID)"
-                class="text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg transition duration-150"
-              >
-                Delete Meal
-              </button>
-            </div>
-
-          </div>
-
+        <div v-if="meals.length === 0" class="text-center py-8">
+          <p class="text-gray-400 text-sm">No recorded user meals found in the database.</p>
         </div>
-
-      </div>
-
-      <div v-if="meals.length === 0" class="bg-white rounded-2xl p-12 text-center shadow-sm max-w-lg mx-auto mt-12">
-        <div class="text-4xl mb-3">🥗</div>
-        <h3 class="text-lg font-semibold text-gray-700">No Meals Available</h3>
-        <p class="text-sm text-gray-400 mt-1">The meals table in the database is currently empty.</p>
       </div>
 
     </main>
-
   </div>
 </template>
 
@@ -85,45 +58,44 @@ definePageMeta({
 import { ref, onMounted } from "vue"
 
 const meals = ref([])
-
-// تم ضبط الرابط تماماً ليتوافق مع هيكلة الـ app.js لديكِ ومخرجات الباكيند المحدثة
 const API = "http://localhost:5000/api/admin/meals"
 
-/* =======================
-   جلب الوجبات
-======================= */
-async function fetchMeals(){
-  try{
+// جلب البيانات من السيرفر
+async function fetchMeals() {
+  try {
     const res = await fetch(API)
-    const data = await res.json()
-    meals.value = data || []
-  }
-  catch(error){
-    console.error("Failed to load meals", error)
+    if (res.ok) {
+      meals.value = await res.json()
+    }
+  } catch (error) {
+    console.error("Error fetching meals:", error)
   }
 }
 
-onMounted(()=>{
+// حذف سجل الوجبة
+async function removeMeal(id) {
+  if (!confirm("Are you sure you want to delete this meal record?")) return
+
+  try {
+    const res = await fetch(`${API}/${id}`, {
+      method: "DELETE"
+    })
+    if (res.ok) {
+      meals.value = meals.value.filter(meal => meal.MealID !== id)
+    }
+  } catch (error) {
+    console.error("Error deleting meal record:", error)
+  }
+}
+
+// دالة بسيطة لتنسيق التاريخ ليظهر بشكل مقروء
+function formatDate(dateStr) {
+  if (!dateStr) return 'N/A'
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+onMounted(() => {
   fetchMeals()
 })
-
-/* =======================
-   حذف وجبة
-======================= */
-async function deleteMeal(id){
-  if(confirm("Are you sure you want to delete this meal?")) {
-    try{
-      await fetch(`${API}/${id}`,{
-        method:"DELETE"
-      })
-
-      meals.value = meals.value.filter(
-        m => m.MealID !== id
-      )
-    }
-    catch(error){
-      console.error("Delete failed", error)
-    }
-  }
-}
 </script>
