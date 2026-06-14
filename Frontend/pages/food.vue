@@ -148,7 +148,7 @@ async function analyzeImageForMeal(mealName, imageFile) {
         const userId = getUserId();
         if (!userId) return;
 
-        // 1. إرسال الصورة مباشرة لسيرفر البايثون (بورت 5050)
+        // 1. Send image directly to Python AI Server (Port 5050)
         const formData = new FormData();
         formData.append('image', imageFile); 
 
@@ -162,16 +162,36 @@ async function analyzeImageForMeal(mealName, imageFile) {
         }
 
         const aiResult = await aiResponse.json();
-        console.log("AI Recognized: 🥳", aiResult.class_name); // الكلمة الراجعة من الموديل، مثل pizza
+        const foodLabel = aiResult.class_name ? aiResult.class_name.replace(/_/g, ' ') : 'Food Item';
+        console.log("AI Recognized: 🥳", foodLabel); 
 
-        // 2. إرسال اسم الوجبة النصي إلى الباكيند Node.js ليتم البحث والتخزين بالداتابيز
+        // 🌟 Supervisor's Feature: Prompt user for serving portion size based on database units
+        const userInput = prompt(
+            `AI successfully recognized: "${foodLabel}" 🍕\n\n` +
+            `Please specify how much you actually consumed.\n` +
+            `Available serving metrics: (g, cup, tbsp, tsp, pc, slice)\n\n` +
+            `Enter amount (e.g., 1 for full portion, 0.5 for half, or number of pieces/grams):`, 
+            "1"
+        );
+        
+        // If user clicks "Cancel" or leaves it empty, exit safely
+        if (userInput === null) {
+            console.log("User cancelled meal logging.");
+            return;
+        }
+
+        // Convert the input into a floating number, default to 1 if invalid
+        const finalQuantity = parseFloat(userInput) || 1;
+
+        // 2. Send the meal name and custom portion size to Node.js Backend
         const backendResponse = await fetch('http://localhost:5000/api/meal/add-by-ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 userId: userId,
                 mealType: mealName,
-                modelLabel: aiResult.class_name // الاسم القادم من البايثون
+                modelLabel: aiResult.class_name, 
+                quantity: finalQuantity          // 🌟 Custom quantity sent to backend calculation
             })
         });
 
@@ -182,12 +202,12 @@ async function analyzeImageForMeal(mealName, imageFile) {
 
         const finalResult = await backendResponse.json();
 
-        // 3. تحديث مصفوفة الوجبات والقراءات في الواجهة فوراً دون الحاجة لتحديث الصفحة
+        // 3. Update interface meals arrays and summary reactively without reloading page
         if (!meals.value[mealName.toLowerCase()]) {
             meals.value[mealName.toLowerCase()] = [];
         }
         
-        // جلب الوجبات المحدثة لليوم لضمان المزامنة التامة
+        // Fetch updated logs from server to ensure perfect synchronization
         const mealRes = await fetch(`http://localhost:5000/api/meal/today/${userId}`);
         if (mealRes.ok) {
             const data = await mealRes.json();
@@ -201,12 +221,8 @@ async function analyzeImageForMeal(mealName, imageFile) {
             recalcSummary();
         }
 
-        // ✨ التعديل السحري والذكي للاعلام هنا ✨
-        // نأخذ الاسم الحقيقي الراجع من الباكيند، وإذا لم يتوفر ننظف الاسم القادم من موديل البايثون
-        const detectedFood = finalResult.foodName || (aiResult.class_name ? aiResult.class_name.replace(/_/g, ' ') : 'meal');
-        
-        // طباعة التنبيه بالاسم الحقيقي للأكلة المقروءة ديناميكياً
-        alert(`AI successfully recognized and registered your ${detectedFood}! 🎉`);
+        const detectedFood = finalResult.foodName || foodLabel;
+        alert(`Success! Logged (${finalQuantity}) serving of ${detectedFood} to your ${mealName}. 🎉`);
 
     } catch (err) {
         console.error("AI automated analysis error:", err);

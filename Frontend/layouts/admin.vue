@@ -1,7 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-100 flex">
 
-    <!-- SIDEBAR -->
     <aside class="w-72 bg-white shadow-md">
       <div class="p-6 border-b">
         <h1 class="text-xl font-bold text-green-600">NutriSense Admin</h1>
@@ -22,10 +21,8 @@
       </nav>
     </aside>
 
-    <!-- MAIN -->
     <main class="flex-1 p-8">
 
-      <!-- HEADER -->
       <header class="flex items-center justify-between mb-6">
         <div>
           <h2 class="text-2xl font-bold text-gray-800">Admin Panel</h2>
@@ -33,7 +30,6 @@
         </div>
       </header>
 
-      <!-- هنا يظهر محتوى الصفحة -->
       <slot />
 
     </main>
@@ -41,6 +37,7 @@
 </template>
 
 <script setup>
+// قائمة التنقل الخاصة باللوحة
 const menu = [
   { title: 'Overview', path: '/admin' },
   { title: 'Users', path: '/admin/users' },

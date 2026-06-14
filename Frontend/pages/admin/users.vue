@@ -1,98 +1,89 @@
+<template>
+  <div class="min-h-screen bg-gray-100 flex">
+    <main class="flex-1 p-8">
+      <header class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Users Management</h2>
+        <p class="text-sm text-gray-500">Manage registered system users</p>
+      </header>
+
+      <div class="bg-white rounded-2xl shadow p-6 overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b text-gray-400 text-xs uppercase bg-gray-50">
+              <th class="p-3">ID</th>
+              <th class="p-3">Full Name</th>
+              <th class="p-3">Email</th>
+              <th class="p-3">Gender</th>
+              <th class="p-3 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody class="text-sm text-gray-700">
+            <tr v-for="user in users" :key="user.UserID" class="border-b last:border-none hover:bg-gray-50">
+              <td class="p-3 font-semibold text-gray-500">#{{ user.UserID }}</td>
+              <td class="p-3 font-medium text-gray-800">{{ user.FirstName }} {{ user.LastName }}</td>
+              <td class="p-3 text-gray-600">{{ user.Email }}</td>
+              <td class="p-3">
+                <span class="px-2 py-1 text-xs rounded-full bg-blue-50 text-blue-600 capitalize">
+                  {{ user.Gender || 'N/A' }}
+                </span>
+              </td>
+              <td class="p-3 text-center">
+                <button @click="removeUser(user.UserID)" class="text-red-500 hover:text-red-700 font-medium text-xs">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div v-if="users.length === 0" class="text-center py-8">
+          <p class="text-gray-400 text-sm">No Registered Users Found.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
 <script setup>
 definePageMeta({
-  layout: 'admin'
+  layout: "admin"
 })
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted } from "vue"
 
 const users = ref([])
+const API = "http://localhost:5000/api/admin/users"
 
-const getUsers = async () => {
+// جلب المستخدمين من السيرفر
+async function fetchUsers() {
   try {
-const res = await fetch("http://localhost:5000/api/users")
-    const data = await res.json()
-    users.value = data
+    const res = await fetch(API)
+    if (res.ok) {
+      users.value = await res.json()
+    }
   } catch (error) {
-    console.error("Error fetching users:", error)
+    console.error("Error loading users:", error)
   }
 }
 
-const deleteUser = async (id) => {
+// دالة حذف حساب مستخدم
+async function removeUser(id) {
+  if (!confirm("Are you sure you want to delete this user?")) return
+  
   try {
-await fetch(`http://localhost:5000/api${id}`, {
-        method: "DELETE"
+    const res = await fetch(`${API}/${id}`, {
+      method: "DELETE"
     })
-    getUsers()
+    if (res.ok) {
+      // إزالة العنصر من المصفوفة لتحديث الواجهة فوراً
+      users.value = users.value.filter(user => user.UserID !== id)
+    }
   } catch (error) {
     console.error("Error deleting user:", error)
   }
 }
 
 onMounted(() => {
-  getUsers()
+  fetchUsers()
 })
 </script>
-
-<template>
-  <div>
-    <header class="flex items-center justify-between mb-6">
-      <h2 class="text-2xl font-bold text-gray-800">Users</h2>
-    </header>
-
-    <div class="bg-white rounded-2xl shadow p-6">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-
-          <thead>
-            <tr class="text-left border-b text-gray-500">
-              <th class="pb-3">ID</th>
-              <th class="pb-3">Name</th>
-              <th class="pb-3">Email</th>
-              <th class="pb-3">Status</th>
-              <th class="pb-3 text-right">Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr
-              v-for="u in users"
-              :key="u.UserID"
-              class="border-b last:border-none"
-            >
-              <td class="py-3">{{ u.UserID }}</td>
-
-              <td class="py-3 font-medium">
-                {{ u.FirstName }} {{ u.LastName }}
-              </td>
-
-              <td class="py-3 text-gray-600">
-                {{ u.Email }}
-              </td>
-
-              <td class="py-3">
-                <span
-                  :class="u.Active == 1
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-red-100 text-red-600'"
-                  class="text-xs px-2 py-1 rounded-full"
-                >
-                  {{ u.Active == 1 ? 'Active' : 'Inactive' }}
-                </span>
-              </td>
-
-              <td class="py-3 text-right">
-                <button
-                  @click="deleteUser(u.UserID)"
-                  class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1 rounded-lg transition"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          </tbody>
-
-        </table>
-      </div>
-    </div>
-  </div>
-</template>
