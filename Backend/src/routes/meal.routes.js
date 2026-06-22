@@ -20,4 +20,8 @@ router.post('/meal/add-suggested', mealController.addSuggestedMeal);
 router.get('/', mealController.getMeals);          // جلب كل وجبات النظام
 router.delete('/:id', mealController.deleteMeal);   // حذف وجبة معينة
 
+// 🆕 مسارات التحكم بالأصناف داخل الوجبة (الحذف والتعديل)
+router.delete('/meal/:mealId/food/:foodItemId', mealController.deleteFoodFromMeal); // 👈 لإصلاح الـ 404 عند الحذف
+router.put('/meal/:mealId/food/:foodItemId', mealController.updateFoodInMeal);     // 👈 لتشغيل التعديل بشكل صحيح
+
 module.exports = router;

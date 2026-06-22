@@ -128,21 +128,24 @@ exports.getTodayMeals = async (req, res) => {
     );
 
     const mealData = await Promise.all(meals.map(async meal => {
-      // تعديل المسميات هنا ليطابق جدول mealfooditem الفعلي الخاص بكم
+      // 🌟 تعديل ذهبي: أضفنا mfi.FoodItemID ليتم إرساله للفرونت إند لأجل عمليات الحذف والتعديل
       const [items] = await db.query(`
-        SELECT f.Name AS name, mfi.TotalCalories AS totalCalories, 
+        SELECT mfi.FoodItemID AS foodItemId, f.Name AS name, mfi.TotalCalories AS totalCalories, 
+              mfi.Quantity AS quantity, mfi.UnitID AS unitId,
               f.Protein AS protein, f.Carbs AS carbs, f.Fat AS fat, 
               f.Fiber AS fiber, f.Sodium AS sodium, f.Cholesterol AS cholesterol
         FROM mealfooditem mfi 
         JOIN fooditem f ON mfi.FoodItemID = f.FoodItemID 
         WHERE mfi.MealID = ?`, [meal.MealID]
       );
+      
       return { 
         mealId: meal.MealID, 
         mealType: meal.MealType, 
         items 
       };
     }));
+    
     res.json(mealData);
   } catch (err) {
     console.error("Get Today's Meals Error:", err);
@@ -328,4 +331,80 @@ exports.addMealByAIName = async (req, res) => {
     console.error("❌ AI Meal Logging Database Error:", err);
     return res.status(500).json({ error: 'Database error occurred while saving AI meal' });
   }
+};
+// 1. دالة حذف أكلة من الوجبة
+exports.deleteFoodFromMeal = async (req, res) => {
+    try {
+        const { mealId, foodItemId } = req.params;
+        
+        await db.query(
+            'DELETE FROM mealfooditem WHERE MealID = ? AND foodItemId = ?', // 👈 تم تعديلها إلى i صغيرة
+            [mealId, foodItemId]
+        );
+        
+        res.status(200).json({ message: 'Food item deleted successfully' });
+    } catch (error) {
+        console.error('❌ Delete Food Error:', error);
+        res.status(500).json({ error: 'An error occurred while deleting the food item' });
+    }
+};
+
+// 2. دالة تعديل الكمية أو الوحدة لأكلة مضافة مسبقاً
+exports.updateFoodInMeal = async (req, res) => {
+    try {
+        const mealId = req.params.mealId || req.params.MealID;
+        const foodItemId = req.params.foodItemId || req.params.FoodItemID;
+        const { quantity, unitId } = req.body;
+
+        // 1. جلب السعرات والماكروز الأساسية لكل 100 جرام للأكلة
+        const [food] = await db.query('SELECT Calories, Protein, Carbs, Fat FROM fooditem WHERE FoodItemID = ?', [foodItemId]);
+        // 2. جلب معامل التحويل للوحدة المحددة
+        const [unit] = await db.query('SELECT ToGramFact FROM fooditemservingunit WHERE foodItemId = ? AND UnitID = ?', [foodItemId, unitId]);
+
+        if (!food.length || !unit.length) {
+            return res.status(404).json({ error: 'Food item or serving unit not found' });
+        }
+
+        // 3. جلب القيم الحالية المسجلة للأكلة في الوجبة قبل التعديل لخصمها من الإجمالي التراكمي
+        const [oldItem] = await db.query('SELECT Quantity, TotalCalories FROM mealfooditem WHERE MealID = ? AND foodItemId = ?', [mealId, foodItemId]);
+        if (!oldItem.length) {
+            return res.status(404).json({ error: 'This food item does not exist in the specified meal' });
+        }
+
+        const oldCalories = parseFloat(oldItem[0].TotalCalories || 0);
+
+        // 4. حساب القيم الجديدة بناءً على الكمية والوحدة المعدلة
+        const toGramFact = unit[0].ToGramFact;
+        const factor = (quantity * toGramFact / 100);
+
+        const newCalories = parseFloat((factor * (food[0].Calories || 0)).toFixed(2));
+        const newProtein = parseFloat((factor * (food[0].Protein || 0)).toFixed(2));
+        const newCarbs = parseFloat((factor * (food[0].Carbs || 0)).toFixed(2));
+        const newFat = parseFloat((factor * (food[0].Fat || 0)).toFixed(2));
+
+        // حساب الفارق في السعرات ليتم تعديله في الجدول الرئيسي للوجبة
+        const calorieDifference = newCalories - oldCalories;
+
+        // 5. تحديث سجل الربط بالكمية والسعرات الجديدة تماماً (استبدال وليس جمع)
+        await db.query(
+            'UPDATE mealfooditem SET Quantity = ?, UnitID = ?, TotalCalories = ? WHERE MealID = ? AND foodItemId = ?',
+            [quantity, unitId, newCalories, mealId, foodItemId]
+        );
+
+        // 6. تحديث الإجمالي التراكمي في جدول الوجبات الأساسي (meal) بإضافة الفارق فقط
+        await db.query(
+            `UPDATE meal SET 
+                TotalCalories = COALESCE(TotalCalories, 0) + ?, 
+                TotalProtein = COALESCE(TotalProtein, 0) + ?, 
+                TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
+                TotalFat = COALESCE(TotalFat, 0) + ? 
+            WHERE MealID = ?`, 
+            [calorieDifference, newProtein, newCarbs, newFat, mealId]
+        );
+
+        res.status(200).json({ message: 'Meal updated successfully', updatedCalories: newCalories });
+    } catch (error) {
+        console.error('❌ Update Food Error:', error);
+        res.status(500).json({ error: 'An error occurred while updating the meal' });
+    }
 };

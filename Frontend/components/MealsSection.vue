@@ -1,45 +1,53 @@
 <template>
-    <div class="space-y-8 px-6">
-        <MealCard 
+  <div class="space-y-8 px-6">
+      <MealCard 
         title="Breakfast"
-        mealName="breakfast"
         :items="meals.breakfast"
+        mealName="breakfast"
+        :mealId="mealIds?.breakfast" 
         :dietType="dietType"
         :diseases="diseases"
         @addFood="addFood"
         @uploadImage="uploadImage"
-        />
+        @refreshMeals="handleRefresh" 
+      />
 
-        <MealCard 
+      <MealCard 
         title="Lunch"
-        mealName="lunch"
         :items="meals.lunch"
+        mealName="lunch"
+        :mealId="mealIds?.lunch" 
         :dietType="dietType"
         :diseases="diseases"
         @addFood="addFood"
         @uploadImage="uploadImage"
-        />
+        @refreshMeals="handleRefresh" 
+      />
 
-        <MealCard 
+      <MealCard 
         title="Dinner"
-        mealName="dinner"
         :items="meals.dinner"
+        mealName="dinner"
+        :mealId="mealIds?.dinner" 
         :dietType="dietType"
         :diseases="diseases"
         @addFood="addFood"
         @uploadImage="uploadImage"
-        />
+        @refreshMeals="handleRefresh" 
+      />
 
-        <MealCard 
+      <MealCard 
         title="Snacks"
-        mealName="snacks"
         :items="meals.snacks"
+        mealName="snacks"
+        :mealId="mealIds?.snacks" 
         :dietType="dietType"
         :diseases="diseases"
         @addFood="addFood"
         @uploadImage="uploadImage"
-        />
-    </div>
+        @refreshMeals="handleRefresh" 
+      />
+  </div>
 </template>
 
 <script setup>
@@ -50,8 +58,12 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  // 🌟 تم التعديل: استقبلنا كائن الـ mealIds المرسل من صفحة food.vue الرئيسية لضمان وصول المعرفات للكروت
+  mealIds: {
+    type: Object,
+    default: () => ({ breakfast: null, lunch: null, dinner: null, snacks: null })
+  },
   dietType: {
-    // التعديل هنا: أضفنا Number لكي يقبل القيمة 3 القادمة من قاعدة البيانات دون اعتراض
     type: [String, Object, Number], 
     default: null
   },
@@ -60,7 +72,9 @@ const props = defineProps({
     default: () => []
   }
 });
-const emit = defineEmits(["addFood", "uploadImage"]);
+
+// 🌟 تم التعديل: أضفنا refreshMeals للـ emits لكي تصل إشارة التحديث لصفحة food.vue الرئيسية وتنفذ fetchMeals()
+const emit = defineEmits(["addFood", "uploadImage", "refreshMeals"]);
 
 function addFood(meal, food) {
     emit("addFood", meal, food);
@@ -68,5 +82,9 @@ function addFood(meal, food) {
 
 function uploadImage(meal, file) {
     emit("uploadImage", meal, file);
+}
+
+function handleRefresh() {
+    emit("refreshMeals");
 }
 </script>
