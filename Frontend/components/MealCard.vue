@@ -300,10 +300,14 @@ const totals = computed(() => {
 });
 
 // مراقبة التغيرات لتحديث التوصيات تلقائياً
-watch(totals, () => {
-    generateRecommendation();
-}, { deep: true });
-
+// Watch totals to trigger the smart Gemini AI feedback instantly on any change
+watch(
+    totals,
+    async () => {
+        await generateRecommendation();
+    },
+    { deep: true, immediate: true }
+);
 /* ================= EDIT & DELETE MEAL ================= */
 
 const editFood = async (item) => {
@@ -367,88 +371,44 @@ const deleteFood = async (item) => {
     }
 };
 
-/* ================= RECOMMENDATION ================= */
 
-function generateRecommendation() {
+/* ================= SMART AI RECOMMENDATION (GEMINI) ================= */
+
+async function generateRecommendation() {
     const food = totals.value;
     
-    if (food.calories === 0) {
+    // 🛑 شرط الأمان الحماسي: إذا كانت السعرات صفر أو البيانات لم تجهز بعد، أوقفت الدالة فوراً ولا تتصل بجوجل
+    if (!food || Number(food.calories) === 0) {
         recommendation.value = "";
         return;
     }
 
-    let messages = [];
+    // نص مؤقت يظهر للمستخدم أثناء انتظار رد جيميناي
+    recommendation.value = "Analyzing meal data and generating smart AI recommendations... ✨";
 
-    const dietMsg = getDietRecommendation(food);
-    if (dietMsg) messages.push(dietMsg);
+    try {
+        // تأكدي من تحويل القيم لـ Array أو String سليم قبل الإرسال لمنع الـ v-model من تمرير كائنات غريبة أثناء الـ refresh
+        const res = await fetch("http://localhost:5000/api/recommendation/generate", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                food: food,
+                dietType: props.dietType || "No specific diet",
+                diseases: props.diseases || []
+            })
+        });
 
-    const diseaseMsgs = getDiseaseAlerts(food);
-    messages.push(...diseaseMsgs);
-
-    recommendation.value = messages.join(" ");
-}
-
-/* ================= DIET LOGIC ================= */
-
-function getDietRecommendation(food) {
-    const diet = props.dietType;
-
-    if (diet === 2 || diet === "Bland") {
-        if (food.fat > 15) return "High fat is not suitable for Bland Diet.";
-        return "Meal fits Bland Diet.";
-    }
-
-    if (diet === 3 || diet === "High-Protein") {
-        if (food.protein < 20) return "Protein is too low for High-Protein diet.";
-        return "Great high-protein meal.";
-    }
-
-    if (diet === 4 || diet === "High-Fiber") {
-        if (food.fiber < 8) return "Fiber is too low. Add vegetables.";
-        return "Good fiber level.";
-    }
-
-    if (diet === 5 || diet === "Low-Saturated Fat") {
-        if (food.fat > 18) return "Fat level too high.";
-        return "Low fat meal.";
-    }
-
-    if (diet === 6 || diet === "DASH") {
-        if (food.sodium > 1500) return "Too much sodium for DASH.";
-        return "Suitable for DASH diet.";
-    }
-
-    return "";
-}
-
-/* ================= DISEASE ALERTS ================= */
-
-function getDiseaseAlerts(food) {
-    const alerts = [];
-    const diseases = props.diseases || [];
-
-    diseases.forEach((disease) => {
-        if (disease === "Hypertension") {
-            if (food.sodium > 1500)
-                alerts.push("High sodium is risky for hypertension.");
+        if (res.ok) {
+            const data = await res.json();
+            recommendation.value = data.recommendation;
+        } else {
+            recommendation.value = "Nutritional values are calculated. Please review your meal details.";
         }
-
-        if (disease === "Diabetes") {
-            if (food.carbs > 45)
-                alerts.push("High carbs may affect blood sugar.");
-        }
-
-        if (disease === "Cholesterol") {
-            if (food.cholesterol > 300)
-                alerts.push("High cholesterol intake.");
-        }
-
-        if (disease === "Colon") {
-            if (food.fiber < 10)
-                alerts.push("Low fiber not good for colon health.");
-        }
-    });
-
-    return alerts;
+    } catch (error) {
+        console.error("Failed to fetch AI recommendation:", error);
+        recommendation.value = "Unable to connect to the AI recommendation service at the moment.";
+    }
 }
 </script>

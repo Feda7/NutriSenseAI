@@ -1,3 +1,4 @@
+require('dotenv').config(); 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const express = require('express');
@@ -18,6 +19,7 @@ const authRoutes = require('./src/routes/auth.routes');
 const userRoutes = require('./src/routes/user.routes');
 const mealRoutes = require('./src/routes/meal.routes');
 const foodRoutes = require('./src/routes/food.routes');
+const recommendationRoutes = require('./src/routes/recommendation.routes');
 
 // ==========================================
 // 🔗 Use Routes
@@ -26,6 +28,7 @@ app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api', mealRoutes);
 app.use('/api', foodRoutes);
+app.use('/api', recommendationRoutes);
 
 // ==========================================
 // 🟢 التحكم بالأنظمة الغذائية (Diets) لصفحة الأدمن
