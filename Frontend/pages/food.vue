@@ -1,8 +1,7 @@
 <template>
     <section class="max-full bg-gray-50 lg:px-80 md:px-56" >
-    <div class="min-h-screen  px-6 py-10">
+    <div class="min-h-screen px-6 py-10">
     
-    <!-- Daily Summary Section -->
     <SummarySection
     :userCalories="userCalories"
     :consumed="consumed"
@@ -11,13 +10,14 @@
 
     <div class="my-10"></div>
 
-    <!-- Meals Section -->
     <MealsSection
-      :meals="meals"
-      :dietType="dietType"
-      :diseases="diseases"
-      @addFood="addFoodToMeal"
-      @uploadImage="analyzeImageForMeal"
+    :meals="meals"
+    :mealIds="mealIds" 
+    :dietType="dietType"
+    :diseases="diseases"
+    @addFood="addFoodToMeal"
+    @uploadImage="analyzeImageForMeal"
+    @refreshMeals="fetchMeals" 
     />
 
     </div>
@@ -38,6 +38,8 @@ const consumed = ref(0)
 const remaining = ref(0)
 const diseases = ref([])
 const meals = ref({ breakfast: [], lunch: [], dinner: [], snacks: [] })
+
+// تم التأكيد على البنية النظيفة الافتراضية
 const mealIds = ref({ breakfast: null, lunch: null, dinner: null, snacks: null })
 
 const dietType = computed(() => {
@@ -54,37 +56,67 @@ function getUserId() {
     return null
 }
 
-// دالة واحدة فقط عند التحميل لضمان عدم التضارب
+// 🔄 دالة جلب البيانات المصلّحة والمسؤولة عن زرع الـ IDs بالكامل للفرونت إند
+async function fetchMeals() {
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+        const mealRes = await fetch(`http://localhost:5000/api/meal/today/${userId}`);
+        if (mealRes.ok) {
+            const data = await mealRes.json();
+            
+            // 🌟 تعديل آمن: تفريغ المعرفات القديمة لكي لا تعلق الوجبة المحذوفة في الذاكرة
+            mealIds.value = { breakfast: null, lunch: null, dinner: null, snacks: null };
+            const newMeals = { breakfast: [], lunch: [], dinner: [], snacks: [] };
+            
+            data.forEach(meal => {
+                const type = meal.mealType?.toLowerCase() || meal.MealType?.toLowerCase();
+                const currentMealId = meal.mealId || meal.MealID || meal.id;
+
+                if (newMeals[type] !== undefined && currentMealId) {
+                    // 1. حفظ معرّف الوجبة في المتغير المخصص له ليقرأه الكرت
+                    mealIds.value[type] = currentMealId;
+                    
+                    // 2. زرع معرّفات الـ ID داخل عناصر الوجبة لضمان وصولها لأزرار الحذف والتعديل
+                    newMeals[type] = (meal.items || meal.Items || []).map(item => ({
+                        ...item,
+                        mealId: currentMealId,
+                        foodItemId: item.foodItemId || item.FoodItemID || item.id || item.FoodId
+                    }));
+                }
+            });
+            
+            meals.value = newMeals;
+            recalcSummary();
+            console.log("🔄 Fixed Meals & IDs injected successfully:", meals.value);
+        }
+    } catch (err) {
+        console.error("Error refreshing meals:", err);
+    }
+}
+
+// دالة التحميل عند فتح الصفحة
 onMounted(async () => {
     const userId = getUserId();
     if (!userId) return;
 
     try {
-        // 1. جلب هدف السعرات
+        // 1. جلب هدف السعرات للمستخدم والمعلومات الطبية (الأمراض) إن وجدت
         const userRes = await fetch(`http://localhost:5000/api/user/${userId}`);
         if (userRes.ok) {
             const userData = await userRes.json();
             userCalories.value = userData.DailyCaloriesTarget || userData.DailyCalories || 2100;
+            
+            // إذا كان الباك إند يعيد الأمراض، نقوم بتعبئتها هنا لتفعيل التحذيرات
+            if (userData.diseases) {
+                diseases.value = userData.diseases;
+            }
         }
 
-        // 2. جلب وجبات اليوم وتوزيعها
-        const mealRes = await fetch(`http://localhost:5000/api/meal/today/${userId}`);
-        if (mealRes.ok) {
-            const data = await mealRes.json();
-            
-            // تصفية المصفوفات
-            const newMeals = { breakfast: [], lunch: [], dinner: [], snacks: [] };
-            
-            data.forEach(meal => {
-                const type = meal.mealType?.toLowerCase();
-                if (newMeals[type] !== undefined) {
-                    mealIds.value[type] = meal.mealId;
-                    newMeals[type] = meal.items || [];
-                }
-            });
-            meals.value = newMeals;
-            recalcSummary();
-        }
+        // 2. استدعاء دالة الجلب الموحدة لزرع البيانات والـ IDs فوراً
+        await fetchMeals();
+
     } catch (err) {
         console.error("Initialization error:", err);
     }
@@ -94,7 +126,7 @@ function recalcSummary() {
     let total = 0;
     Object.values(meals.value).forEach(mealArray => {
         mealArray.forEach(item => {
-            total += Number(item.totalCalories || 0);
+            total += Number(item.totalCalories || item.Calories || 0);
         });
     });
     consumed.value = total;
@@ -104,7 +136,7 @@ function recalcSummary() {
 async function addFoodToMeal(mealName, foodItem) {
     try {
         const userId = getUserId();
-        let mealId = mealIds.value[mealName];
+        let mealId = mealIds.value[mealName.toLowerCase()];
 
         // إنشاء الوجبة إذا لم تكن موجودة
         if (!mealId) {
@@ -115,7 +147,7 @@ async function addFoodToMeal(mealName, foodItem) {
             });
             const mealData = await mealRes.json();
             mealId = mealData.mealId;
-            mealIds.value[mealName] = mealId;
+            mealIds.value[mealName.toLowerCase()] = mealId;
         }
 
         // إضافة الصنف
@@ -130,13 +162,8 @@ async function addFoodToMeal(mealName, foodItem) {
             })
         });
 
-        // تحديث البيانات من السيرفر فوراً لضمان المزامنة
-        const updatedRes = await fetch(`http://localhost:5000/api/meal/${mealId}`);
-        const updatedData = await updatedRes.json();
-        
-        // تحديث المصفوفة الخاصة بهذه الوجبة فقط
-        meals.value[mealName] = updatedData.items || [];
-        recalcSummary();
+        // تحديث البيانات بالكامل عبر الدالة الموحدة لضمان ثبات المزامنة والـ IDs
+        await fetchMeals();
 
     } catch (err) {
         console.error("Add food error:", err);
@@ -148,7 +175,7 @@ async function analyzeImageForMeal(mealName, imageFile) {
         const userId = getUserId();
         if (!userId) return;
 
-        // 1. Send image directly to Python AI Server (Port 5050)
+        // 1. إرسال الصورة إلى سيرفر الذكاء الاصطناعي ببايثون
         const formData = new FormData();
         formData.append('image', imageFile); 
 
@@ -165,7 +192,7 @@ async function analyzeImageForMeal(mealName, imageFile) {
         const foodLabel = aiResult.class_name ? aiResult.class_name.replace(/_/g, ' ') : 'Food Item';
         console.log("AI Recognized: 🥳", foodLabel); 
 
-        // 🌟 Supervisor's Feature: Prompt user for serving portion size based on database units
+        // طلب حجم الحصة من المستخدم
         const userInput = prompt(
             `AI successfully recognized: "${foodLabel}" 🍕\n\n` +
             `Please specify how much you actually consumed.\n` +
@@ -174,16 +201,14 @@ async function analyzeImageForMeal(mealName, imageFile) {
             "1"
         );
         
-        // If user clicks "Cancel" or leaves it empty, exit safely
         if (userInput === null) {
             console.log("User cancelled meal logging.");
             return;
         }
 
-        // Convert the input into a floating number, default to 1 if invalid
         const finalQuantity = parseFloat(userInput) || 1;
 
-        // 2. Send the meal name and custom portion size to Node.js Backend
+        // 2. إرسال الحصة المستلمة إلى الباك إند الخاص بنود
         const backendResponse = await fetch('http://localhost:5000/api/meal/add-by-ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -191,7 +216,7 @@ async function analyzeImageForMeal(mealName, imageFile) {
                 userId: userId,
                 mealType: mealName,
                 modelLabel: aiResult.class_name, 
-                quantity: finalQuantity          // 🌟 Custom quantity sent to backend calculation
+                quantity: finalQuantity
             })
         });
 
@@ -202,24 +227,8 @@ async function analyzeImageForMeal(mealName, imageFile) {
 
         const finalResult = await backendResponse.json();
 
-        // 3. Update interface meals arrays and summary reactively without reloading page
-        if (!meals.value[mealName.toLowerCase()]) {
-            meals.value[mealName.toLowerCase()] = [];
-        }
-        
-        // Fetch updated logs from server to ensure perfect synchronization
-        const mealRes = await fetch(`http://localhost:5000/api/meal/today/${userId}`);
-        if (mealRes.ok) {
-            const data = await mealRes.json();
-            data.forEach(meal => {
-                const type = meal.mealType?.toLowerCase();
-                if (meals.value[type] !== undefined) {
-                    mealIds.value[type] = meal.mealId;
-                    meals.value[type] = meal.items || [];
-                }
-            });
-            recalcSummary();
-        }
+        // 3. استدعاء الدالة الموحدة لتحديث الواجهة فوراً بزرع المعرفات الجديدة
+        await fetchMeals();
 
         const detectedFood = finalResult.foodName || foodLabel;
         alert(`Success! Logged (${finalQuantity}) serving of ${detectedFood} to your ${mealName}. 🎉`);
