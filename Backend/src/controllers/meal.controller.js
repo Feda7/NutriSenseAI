@@ -1,5 +1,11 @@
 const { db } = require('../config/db');
 
+// دالة مساعدة لتوليد تاريخ اليوم الحالي بتنسيق YYYY-MM-DD الثابت لتجنب فروقات الـ Timezone
+const getTodayDateString = () => {
+  return new Date().toISOString().slice(0, 10);
+};
+
+// 1. إنشاء وجبة جديدة (يدوياً)
 exports.createMeal = async (req, res) => {
   const { userId, mealType } = req.body; 
   try {
@@ -8,10 +14,12 @@ exports.createMeal = async (req, res) => {
                     now.getMinutes().toString().padStart(2, '0') + ':' + 
                     now.getSeconds().toString().padStart(2, '0');
     
+    const todayDate = getTodayDateString();
+
     const [result] = await db.query(
       `INSERT INTO meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
-       VALUES (?, ?, ?, CURDATE(), 0, 0, 0, 0)`, 
-      [userId, mealType, mealTime]
+       VALUES (?, ?, ?, ?, 0, 0, 0, 0)`, 
+      [userId, mealType, mealTime, todayDate]
     );
     
     res.status(201).json({ message: "Meal created successfully", mealId: result.insertId });
@@ -21,19 +29,19 @@ exports.createMeal = async (req, res) => {
   }
 };
 
+// 2. إضافة صنف طعام إلى وجبة منشأة مسبقاً
 exports.addFoodToMeal = async (req, res) => {
   const { mealId, foodItemId, quantity, unitId } = req.body;
-  // تأمين معرف الأكلة سواء جاء باسم id أو foodItemId من الفرونت إند
 
   try {
-    // 1. جلب بيانات الصنف
+    // جلب بيانات الصنف
     const [foodRows] = await db.query("SELECT Calories, Protein, Carbs, Fat FROM fooditem WHERE FoodItemID = ?", [foodItemId]);
     
     if (!foodRows.length) {
       return res.status(404).json({ error: "Food item not found" });
     }
 
-    // 2. جلب معامل التحويل للجرام
+    // جلب معامل التحويل للجرام
     const [unitRows] = await db.query(
       "SELECT ToGramFact FROM fooditemservingunit WHERE foodItemId = ? AND UnitID = ?", 
       [foodItemId, unitId]
@@ -48,37 +56,37 @@ exports.addFoodToMeal = async (req, res) => {
     const carb = parseFloat((factor * (foodRows[0].Carbs || 0)).toFixed(2));
     const fat = parseFloat((factor * (foodRows[0].Fat || 0)).toFixed(2));
 
-    // ✨ 3. الفحص قبل الإدخال لمنع خطأ Duplicate Entry
+    // الفحص قبل الإدخال لمنع خطأ Duplicate Entry
     const [existingItems] = await db.query(
       "SELECT Quantity, TotalCalories FROM mealfooditem WHERE MealID = ? AND foodItemId = ?",
       [mealId, foodItemId]
     );
 
     if (existingItems.length > 0) {
-      // الصنف موجود مسبقاً في الوجبة -> نقوم بتحديث الكمية والسعرات فقط
+      // الصنف موجود مسبقاً في الوجبة -> تحديث الكمية والسعرات
       await db.query(
         `UPDATE mealfooditem SET 
-          Quantity = Quantity + ?, 
-          TotalCalories = TotalCalories + ? 
-        WHERE MealID = ? AND foodItemId = ?`,
+           Quantity = Quantity + ?, 
+           TotalCalories = TotalCalories + ? 
+         WHERE MealID = ? AND foodItemId = ?`,
         [quantity, cal, mealId, foodItemId]
       );
     } else {
-      // الصنف غير موجود -> نقوم بإدخاله كـ سجل جديد لأول مرة
+      // الصنف غير موجود -> سجل جديد لأول مرة
       await db.query(
         `INSERT INTO mealfooditem (MealID, foodItemId, Quantity, UnitID, TotalCalories) VALUES (?, ?, ?, ?, ?)`, 
         [mealId, foodItemId, quantity, unitId, cal]
       );
     }
 
-    // 4. تحديث الإجمالي التراكمي في جدول الوجبة الأساسي (meal)
+    // تحديث الإجمالي التراكمي في جدول الوجبة الأساسي (meal)
     await db.query(
       `UPDATE meal SET 
-        TotalCalories = COALESCE(TotalCalories, 0) + ?, 
-        TotalProtein = COALESCE(TotalProtein, 0) + ?, 
-        TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
-        TotalFat = COALESCE(TotalFat, 0) + ? 
-      WHERE MealID = ?`, 
+         TotalCalories = COALESCE(TotalCalories, 0) + ?, 
+         TotalProtein = COALESCE(TotalProtein, 0) + ?, 
+         TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
+         TotalFat = COALESCE(TotalFat, 0) + ? 
+       WHERE MealID = ?`, 
       [cal, pro, carb, fat, mealId]
     );
 
@@ -89,6 +97,7 @@ exports.addFoodToMeal = async (req, res) => {
   }
 };
 
+// 3. جلب تفاصيل وجبة محددة مع عناصرها
 exports.getMeal = async (req, res) => {
   const { mealId } = req.params;
   try {
@@ -96,21 +105,20 @@ exports.getMeal = async (req, res) => {
     if (!mealRows.length) return res.status(404).json({ error: "Meal not found" });
 
     const query = `
-    SELECT 
-        f.Name AS name, 
-        mfi.Quantity AS quantity, 
-        su.ShortCode AS unit, 
-        mfi.TotalCalories AS totalCalories,
-        -- حساب الماكروز ديناميكياً بناءً على نسبة السعرات الإجمالية إلى السعرات الأساسية لكل 100 جرام
-        ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Protein, 0), 2) AS protein,
-        ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Carbs, 0), 2) AS carbs,
-        ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Fat, 0), 2) AS fat
-    FROM mealfooditem mfi 
-    JOIN fooditem f ON mfi.FoodItemID = f.FoodItemID 
-    JOIN servingunit su ON mfi.UnitID = su.UnitID
-    WHERE mfi.MealID = ?
-`;
-const [items] = await db.query(query, [mealId]);
+      SELECT 
+          f.Name AS name, 
+          mfi.Quantity AS quantity, 
+          su.ShortCode AS unit, 
+          mfi.TotalCalories AS totalCalories,
+          ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Protein, 0), 2) AS protein,
+          ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Carbs, 0), 2) AS carbs,
+          ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Fat, 0), 2) AS fat
+      FROM mealfooditem mfi 
+      JOIN fooditem f ON mfi.foodItemId = f.FoodItemID 
+      JOIN servingunit su ON mfi.UnitID = su.UnitID
+      WHERE mfi.MealID = ?
+    `;
+    const [items] = await db.query(query, [mealId]);
 
     res.json({ meal: mealRows[0], items: items });
   } catch (err) {
@@ -119,27 +127,32 @@ const [items] = await db.query(query, [mealId]);
   }
 };
 
+// 4. جلب وجبات وعناصر اليوم الحالي للمستخدم (المسؤولة عن حساب وعرض السعرات التراكمية بالهوم)
 exports.getTodayMeals = async (req, res) => {
   const { userId } = req.params;
   try {
+    const todayDate = getTodayDateString(); 
+
     const [meals] = await db.query(
-      `SELECT MealID, MealType, TotalCalories FROM meal WHERE UserID = ? AND Date = CURDATE()`, 
-      [userId]
+      `SELECT MealID, MealType, TotalCalories FROM meal WHERE UserID = ? AND Date = ?`, 
+      [userId, todayDate]
     );
 
     const mealData = await Promise.all(meals.map(async meal => {
-      // تعديل المسميات هنا ليطابق جدول mealfooditem الفعلي الخاص بكم
       const [items] = await db.query(`
         SELECT f.Name AS name, mfi.TotalCalories AS totalCalories, 
               f.Protein AS protein, f.Carbs AS carbs, f.Fat AS fat, 
               f.Fiber AS fiber, f.Sodium AS sodium, f.Cholesterol AS cholesterol
         FROM mealfooditem mfi 
-        JOIN fooditem f ON mfi.FoodItemID = f.FoodItemID 
+        JOIN fooditem f ON mfi.foodItemId = f.FoodItemID 
         WHERE mfi.MealID = ?`, [meal.MealID]
       );
+      
       return { 
         mealId: meal.MealID, 
         mealType: meal.MealType, 
+        totalCalories: meal.TotalCalories || 0, // 👈 صيغة الحرف الصغير (الأرجح أن الفرونت إند يطلبها)
+        TotalCalories: meal.TotalCalories || 0, // 👈 صيغة الحرف الكبير كاحتياط
         items 
       };
     }));
@@ -149,7 +162,7 @@ exports.getTodayMeals = async (req, res) => {
     res.status(500).json({ error: "Database error" });
   }
 };
-
+// 5. جلب اقتراحات عشوائية لصفحة الهوم الفرونت إند
 exports.getHomeData = async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -162,8 +175,8 @@ exports.getHomeData = async (req, res) => {
         Fat AS temp_fat,
         ModelLabel AS temp_image
        FROM fooditem 
-       ORDER BY RAND() \n` +
-      '       LIMIT 6'
+       ORDER BY RAND() 
+       LIMIT 6`
     );
     return res.json(rows);
   } catch (err) {
@@ -172,37 +185,56 @@ exports.getHomeData = async (req, res) => {
   }
 };
 
+// 6. إضافة وجبة مقترحة مباشرة بضغطة زر وتحديث السعرات بنفس توقيت الجلب الموحد
 exports.addSuggestedMeal = async (req, res) => {
   const { userId, mealType, foodItemId } = req.body;
+  
+  console.log("📝 Backend received suggested meal request:", { userId, mealType, foodItemId });
+
   try {
     const [foodRows] = await db.query('SELECT * FROM fooditem WHERE FoodItemID = ?', [foodItemId]);
+    
     if (foodRows.length === 0) {
       return res.status(404).json({ error: 'Suggested food item not found' });
     }
 
-    const food = foodRows;
-    const now = new Date();
-    const mealTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0') + ':00';
+    const food = foodRows[0]; 
+    const calories = food.Calories || food.calories || 0;
+    const protein = food.Protein || food.protein || 0;
+    const carbs = food.Carbs || food.carbs || food.carb || 0;
+    const fat = food.Fat || food.fat || 0;
 
+    const now = new Date();
+    const mealTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                     now.getMinutes().toString().padStart(2, '0') + ':00';
+    
+    const todayDate = getTodayDateString(); 
+
+    // إدخال الوجبة الرئيسية بالتاريخ الموحد المتناسق مع دالة الجلب
     const [mealResult] = await db.query(
       `INSERT INTO meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
-       VALUES (?, ?, ?, CURDATE(), ?, ?, ?, ?)`,
-      [userId, mealType, mealTime, food.Calories, food.Protein, food.Carbs, food.Fat]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [userId, mealType, mealTime, todayDate, calories, protein, carbs, fat]
     );
 
     const mealId = mealResult.insertId;
 
+    // الربط في جدول mealfooditem وضبط مسمى العمود ليكون متناسقاً (foodItemId)
     await db.query(
-      'INSERT INTO mealfooditem (MealID, FooditemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, 1, 1, ?)',
-      [mealId, foodItemId, food.Calories]
+      `INSERT INTO mealfooditem (MealID, foodItemId, Quantity, UnitID, TotalCalories) VALUES (?, ?, 1, 1, ?)`,
+      [mealId, foodItemId, calories]
     );
 
+    console.log("✅ Suggested meal logged successfully! MealID:", mealId);
     return res.status(201).json({ message: 'Suggested meal logged successfully!' });
+
   } catch (err) {
-    console.error("❌ Add Suggested Error:", err);
-    return res.status(500).json({ error: 'Failed to log suggested meal' });
+    console.error("❌ SQL Error details inside addSuggestedMeal:", err.message); 
+    return res.status(500).json({ error: 'Database error occurred', details: err.message });
   }
 };
+
+// 7. جلب بيانات التقدم والرسوم البيانية للمستخدم
 exports.getProgressData = async (req, res) => {
     const { userId } = req.params;
     try {
@@ -234,11 +266,12 @@ exports.getProgressData = async (req, res) => {
 
         res.json({ goals: userStats[0], today: todayTotals[0], history: history });
     } catch (err) {
+        console.error("Progress Data Error:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
 
-// 1. جلب كل الوجبات 
+// 8. جلب كل الوجبات المسجلة في النظام (لوحة الإدارة مثلاً)
 exports.getMeals = async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM meal");
@@ -249,7 +282,7 @@ exports.getMeals = async (req, res) => {
   }
 };
 
-// 2. حذف وجبة معينة
+// 9. حذف وجبة معينة
 exports.deleteMeal = async (req, res) => {
   const id = req.params.id;
   try {
@@ -260,13 +293,15 @@ exports.deleteMeal = async (req, res) => {
     res.status(500).json({ error: "Delete failed" });
   }
 };
+
+// 10. تسجيل وجبة جديدة تم التعرف عليها بواسطة الذكاء الاصطناعي (AI Model)
 exports.addMealByAIName = async (req, res) => {
   const { userId, mealType, modelLabel } = req.body;
 
   try {
     const formattedLabel = modelLabel.replace(/_/g, ' ');
 
-    // 1. جلب السجل بالبحث المرن
+    // جلب السجل بالبحث المرن
     const [foodRows] = await db.query(
       `SELECT * FROM fooditem 
        WHERE ModelLabel = ? OR ModelLabel = ? OR Name = ? OR Name = ? LIMIT 1`, 
@@ -278,14 +313,13 @@ exports.addMealByAIName = async (req, res) => {
     let pro = 25;
     let carb = 45;
     let fat = 10;
-    let foodRealName = formattedLabel; // حفظ اسم الأكلة الحقيقي لإرجاعه للتنبيه
+    let foodRealName = formattedLabel; 
 
-    // 2. مطابقة المسميات من الداتابيس
+    // مطابقة المسميات من الداتابيس
     if (foodRows.length) {
       const row = foodRows[0];
       
-      // مطابقة مرنة للمعرف بناء على صورة الجدول الحقيقية
-      foodItemId = row.FooditemID || row.FoodItemID || row.fooditemid || row.id || 1;
+      foodItemId = row.FoodItemID || row.Fooditemid || row.fooditemid || row.id || 1;
       foodRealName = row.Name || row.name || formattedLabel;
       
       cal = parseFloat(row.Calories || row.calories || 0);
@@ -301,22 +335,23 @@ exports.addMealByAIName = async (req, res) => {
                      now.getMinutes().toString().padStart(2, '0') + ':' + 
                      now.getSeconds().toString().padStart(2, '0');
 
-    // 3. إدخال الوجبة الرئيسية في جدول meal
+    const todayDate = getTodayDateString();
+
+    // إدخال الوجبة الرئيسية في جدول meal بالتاريخ الموحد
     const [mealResult] = await db.query(
       `INSERT INTO meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
-       VALUES (?, ?, ?, CURDATE(), ?, ?, ?, ?)`, 
-      [userId, mealType, mealTime, cal, pro, carb, fat]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+      [userId, mealType, mealTime, todayDate, cal, pro, carb, fat]
     );
 
     const mealId = mealResult.insertId;
 
-    // 4. الربط في جدول mealfooditem المطابق تماماً لـ image_00e101.png بحرف i سمول
+    // الربط في جدول mealfooditem المتناسق
     await db.query(
-      `INSERT INTO mealfooditem (MealID, FooditemID, Quantity, UnitID, TotalCalories) VALUES (?, ?, 1, 1, ?)`, 
+      `INSERT INTO mealfooditem (MealID, foodItemId, Quantity, UnitID, TotalCalories) VALUES (?, ?, 1, 1, ?)`, 
       [mealId, foodItemId, cal]
     );
 
-    // إرسال اسم الأكل الحقيقي (foodRealName) في الاستجابة للفرونت إند لطباعته في الـ Alert
     return res.status(201).json({ 
       message: `AI successfully recognized and registered your ${foodRealName}! 🎉`,
       foodName: foodRealName,
