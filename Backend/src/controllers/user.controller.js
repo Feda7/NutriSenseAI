@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const { db, findUserByCredentials } = require('../config/db');
 
 // إنشاء مستخدم جديد وتحديد الدايت
+// إنشاء مستخدم جديد وتحديد الدايت
 exports.createUser = async (req, res) => {
   try {
     const { FirstName, LastName, Email, Password, BirthDate, Gender, Height, CurrentWeight, DesiredWeight, ActiveLevelID, GoalID, DietTypeID, MedicalConditions } = req.body;
@@ -17,8 +18,8 @@ exports.createUser = async (req, res) => {
     // 2. توليد رقم OTP
     const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
 
-
     const hashedPassword = await bcrypt.hash(Password, 10);
+
     // 3. إدخال البيانات الأساسية (isVerified = 0)
     const [result] = await db.query(`
       INSERT INTO \`user\`
@@ -28,7 +29,7 @@ exports.createUser = async (req, res) => {
 
     const userId = result.insertId;
 
-    // 4. منطق حساب الدايت والسعرات (شغل زميلتك)
+    // 4. منطق حساب الدايت والسعرات (شغل زميلتك + حفظه في الجدول الوسيط)
     let conditions = Array.isArray(MedicalConditions) ? MedicalConditions : [];
     
     // تصحيح قراءة المتغير القادم من الفرونتيند لضمان عدم انهيار الكود
@@ -37,24 +38,35 @@ exports.createUser = async (req, res) => {
     const [dietRows] = await db.query("SELECT * FROM DietType WHERE DietTypeID = ?", [DietTypeIDComputed]);
     const diet = dietRows[0] || { CaloriesMultiplier: 1 };
 
-
-
-     const age = new Date().getFullYear() - new Date(BirthDate).getFullYear();
+    const age = new Date().getFullYear() - new Date(BirthDate).getFullYear();
     let BMR = Gender === 'Male' ? (10 * CurrentWeight) + (6.25 * Height) - (5 * age) + 5 : (10 * CurrentWeight) + (6.25 * Height) - (5 * age) - 161;
     let activityMultiplier = ActiveLevelID == 2 ? 1.55 : 1.2;
     let dailyCalories = Math.round((BMR * activityMultiplier) * (diet?.CaloriesMultiplier || 1));
 
-    // تحديث السعرات وحفظ الأمراض في قاعدة البيانات
+    // حساب نسب المغذيات بناءً على الـ Ratios للدايت المختار لتخزينها في الجدول الوسيط
+    const proteinTarget = Math.round(dailyCalories * (diet.ProteinRatio || 0.25));
+    const fatTarget = Math.round(dailyCalories * (diet.FatRatio || 0.25));
+    const carbTarget = Math.round(dailyCalories * (diet.CarbRatio || 0.50));
+
+    // تحديث السعرات في جدول المستخدم الأساسي
     await db.query("UPDATE `user` SET DailyCalories = ? WHERE UserID = ?", [dailyCalories, userId]);
+    
+    // 🚀 [إضافة جديدة]: إدخال الصف الأول في الجدول الوسيط للدايت (userdiettype) ليرتبط بالمستخدم فوراً
+    await db.query(`
+      INSERT INTO userdiettype (UserID, DietTypeID, DailyCaloriesTarget, ProteinTarget, FatTarget, CarbTarget, StartDate)
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
+    `, [userId, DietTypeIDComputed, dailyCalories, proteinTarget, fatTarget, carbTarget]);
+
+    // حفظ الأمراض في قاعدة البيانات
     for (const diseaseId of conditions) {
       await db.query("INSERT INTO UserDiseases (UserID, DiseasesID) VALUES (?, ?)", [userId, diseaseId]);
     }
 
-    // 5. إعداد وإرسال الإيميل (هنا الجزء الذي سألتِ عنه)
-      const transporter = nodemailer.createTransport({
+    // 5. إعداد وإرسال الإيميل
+    const transporter = nodemailer.createTransport({
       service: 'gmail',
       host: 'smtp.gmail.com',
-      port: 465,               
+      port: 465,              
       secure: true,            
       auth: {
         user: 'dhfc397@gmail.com',
