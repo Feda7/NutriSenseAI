@@ -45,7 +45,7 @@
     <!-- Monthly Progress Chart -->
     <section class="max-w-7xl mx-auto mb-10">
       <div class="bg-white shadow-md rounded-2xl p-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-6">Monthly Weight & Calories Progress</h2>
+        <h2 class="text-xl font-semibold text-gray-800 mb-6"> Weight & Calories Progress</h2>
         <div style="position: relative; height: 400px; width: 100%;">
           <canvas id="progressChart"></canvas>
         </div>
@@ -55,7 +55,7 @@
     <!-- Monthly Nutrition Table -->
     <section class="max-w-7xl mx-auto">
       <div class="bg-white shadow-md rounded-2xl p-6 overflow-x-auto">
-        <h2 class="text-xl font-semibold text-gray-800 mb-6">Monthly Nutrition Log</h2>
+        <h2 class="text-xl font-semibold text-gray-800 mb-6"> Nutrition Log</h2>
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
