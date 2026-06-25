@@ -1,196 +1,1295 @@
+    CREATE TABLE `activelevel` (
+    `ActiveLevelID` int(11) NOT NULL AUTO_INCREMENT,
+    `ActiveName` varchar(100) NOT NULL,
+    `Description` text DEFAULT NULL,
+    `ActiveFactor` float NOT NULL,
+    PRIMARY KEY (`ActiveLevelID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE Active (
-    ActiveLevelID INT PRIMARY KEY AUTO_INCREMENT,
-    ActiveName VARCHAR(50) NOT NULL,
-    Description TEXT ,
-    ActiveFactor FLOAT NOT NULL
-);
+    INSERT INTO `activelevel` (`ActiveLevelID`, `ActiveName`, `Description`, `ActiveFactor`) VALUES
+    (1, 'Low', 'Low activity: little or no exercise, mostly sitting lifestyle', 1.2),
+    (2, 'Moderate', 'Moderate activity: exercise 3-5 days per week', 1.55),
+    (3, 'High', 'High activity: hard exercise 6-7 days per week or physically demanding job', 1.725);
 
+    CREATE TABLE `dietrule` (
+    `RuleID` int(11) NOT NULL AUTO_INCREMENT,
+    `DietTypeID` int(11) NOT NULL,
+    `RuleLevel` varchar(50) NOT NULL,
+    `Value` float NOT NULL,
+    `Operator` varchar(10) NOT NULL,
+    `Description` text DEFAULT NULL,
+    PRIMARY KEY (`RuleID`),
+    KEY `DietTypeID` (`DietTypeID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE Goal (
-    GoalID INT PRIMARY KEY AUTO_INCREMENT,
-    Name VARCHAR(50) NOT NULL 
-);
+    INSERT INTO `dietrule` (`RuleID`, `DietTypeID`, `RuleLevel`, `Value`, `Operator`, `Description`) VALUES
+    (1, 2, 'Protein', 20, '>', 'High Protein diet requires high protein meals'),
+    (2, 3, 'Fiber', 8, '>', 'High Fiber diet encourages fiber rich meals'),
+    (3, 4, 'Fat', 18, '<', 'Low Saturated Fat diet limits fat intake'),
+    (4, 5, 'Sodium', 1500, '<', 'DASH diet limits sodium intake'),
+    (5, 6, 'Fat', 15, '<', 'Bland diet requires low fat meals');
 
+    CREATE TABLE `dietrulefooditem` (
+    `RuleID` int(11) NOT NULL,
+    `FoodItemID` int(11) NOT NULL,
+    PRIMARY KEY (`RuleID`, `FoodItemID`),
+    KEY `FoodItemID` (`FoodItemID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE DietType (
-    DietTypeID INT PRIMARY KEY AUTO_INCREMENT,
-    Name VARCHAR(100) NOT NULL,
-    GoalType VARCHAR(50) NOT NULL,
-    ActiveLevel VARCHAR(50) NOT NULL,
-    ProteinRatio FLOAT NOT NULL,
-    FatRatio FLOAT NOT NULL,
-    CarbRatio FLOAT NOT NULL,
-    CaloriesMultiplier FLOAT NOT NULL,
-    Description TEXT
-);
+    -- 4. جدول dietruletag (مفتاح أساسي مركب)
+    CREATE TABLE `dietruletag` (
+    `RuleID` int(11) NOT NULL,
+    `TagID` int(11) NOT NULL,
+    PRIMARY KEY (`RuleID`, `TagID`),
+    KEY `TagID` (`TagID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+    CREATE TABLE `diettype` (
+    `DietTypeID` int(11) NOT NULL AUTO_INCREMENT,
+    `Name` varchar(100) NOT NULL,
+    `CarbRatio` float NOT NULL,
+    `ProteinRatio` float NOT NULL,
+    `FatRatio` float NOT NULL,
+    `Description` text DEFAULT NULL,
+    `GoalType` varchar(50) NOT NULL,
+    `ActiveLevel` varchar(50) NOT NULL,
+    `CaloriesMultiplier` float DEFAULT NULL,
+    PRIMARY KEY (`DietTypeID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE Diseases (
-    DiseasesID INT PRIMARY KEY AUTO_INCREMENT,
-    NameDis VARCHAR(100) NOT NULL,
-    Description TEXT NOT NULL
-);
+    INSERT INTO `diettype` (`DietTypeID`, `Name`, `CarbRatio`, `ProteinRatio`, `FatRatio`, `Description`, `GoalType`, `ActiveLevel`, `CaloriesMultiplier`) VALUES
+    (2, 'Bland Diet', 0.5, 0.2, 0.3, 'Simple diet with mild foods', 'Maintain Weight', 'Low', 1),
+    (3, 'High-Protein', 0.3, 0.5, 0.2, 'Diet focused on muscle building', 'Weight Gain', 'High', 1.2),
+    (4, 'High-Fiber', 0.55, 0.2, 0.25, 'Diet rich in fiber for digestion', 'Maintain Weight', 'Moderate', 1),
+    (5, 'Low-Saturated Fat', 0.55, 0.25, 0.2, 'Diet to reduce cholesterol and heart risk', 'Weight Loss', 'Moderate', 0.9),
+    (6, 'DASH', 0.5, 0.25, 0.25, 'Dietary Approaches to Stop Hypertension', 'Weight Loss', 'Moderate', 1);
 
+    CREATE TABLE `diettypediseases` (
+    `DietTypeID` int(11) NOT NULL,
+    `DiseasesID` int(11) NOT NULL,
+    `Allow` tinyint(1) NOT NULL,
+    `Allowance` decimal(5,2) NOT NULL,
+    PRIMARY KEY (`DietTypeID`, `DiseasesID`),
+    KEY `DiseasesID` (`DiseasesID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE ServingUnit (
-    UnitID INT PRIMARY KEY AUTO_INCREMENT,
-    Name VARCHAR(100) NOT NULL,
-    ShortCode VARCHAR(50) NOT NULL,
-    ToGramFact FLOAT NOT NULL
-);
+    INSERT INTO `diettypediseases` (`DietTypeID`, `DiseasesID`, `Allow`, `Allowance`) VALUES
+    (2, 1, 1, 1.00), (3, 1, 1, 1.00), (3, 2, 0, 0.00),
+    (3, 5, 0, 0.00), (4, 1, 1, 1.00),(4, 4, 1, 1.00),
+    (5, 1, 1, 1.00), (5, 3, 1, 0.80), (5, 5, 1, 0.90),
+    (6, 1, 1, 1.00), (6, 2, 1, 1.00);
 
-CREATE TABLE User (
-    UserID INT PRIMARY KEY AUTO_INCREMENT,
-    FirstName VARCHAR(50) NOT NULL,
-    LastName VARCHAR(50) NOT NULL,
-    Email VARCHAR(255) NOT NULL UNIQUE,
-    Password VARCHAR(128) NOT NULL,
-    BirthDate DATE NOT NULL,
-    Gender VARCHAR(10) NOT NULL,
-    Height FLOAT NOT NULL,
-    CurrentWeight FLOAT NOT NULL,
-    DesiredWeight FLOAT NOT NULL,
-    DailyCalories FLOAT NOT NULL,
-    JoinDate DATETIME NOT NULL,
-    ActiveLevelID INT NOT NULL,
-    GoalID INT NOT NULL,
-    FOREIGN KEY (ActiveLevelID) REFERENCES ActiveLevel(ActiveLevelID),
-    FOREIGN KEY (GoalID) REFERENCES Goal(GoalID)
-);
+    CREATE TABLE `diettypefooditem` (
+    `DietTypeID` int(11) NOT NULL,
+    `FoodItemID` int(11) NOT NULL,
+    `Allow` tinyint(1) NOT NULL,
+    `DefaultFlag` tinyint(1) NOT NULL,
+    `Allowance` varchar(100) NOT NULL,
+    PRIMARY KEY (`DietTypeID`, `FoodItemID`),
+    KEY `FoodItemID` (`FoodItemID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE FoodItem (
-    FoodItemID INT PRIMARY KEY AUTO_INCREMENT,
-    Name VARCHAR(100) NOT NULL,
-    Calories FLOAT NOT NULL,
-    Protein FLOAT NOT NULL,
-    Carbs FLOAT NOT NULL,
-    Fats FLOAT NOT NULL,
-    WeightInGram FLOAT NOT NULL,
-    UnitID INT NOT NULL,
-    Amount FLOAT NOT NULL
-);
+    INSERT INTO `diettypefooditem` (`DietTypeID`, `FoodItemID`, `Allow`, `DefaultFlag`, `Allowance`) VALUES
+    (2, 1, 1, 0, 'Allowed in moderation'),
+    (3, 1, 1, 0, 'Allowed, but focus on protein foods'),
+    (4, 1, 1, 1, 'Recommended daily'),
+    (5, 1, 1, 1, 'Preferred fruit option'),
+    (6, 1, 1, 1, 'Encouraged for heart health');
 
-CREATE TABLE Meal (
-    MealID INT PRIMARY KEY AUTO_INCREMENT,
-    UserID INT NOT NULL,
-    MealTime TIME NOT NULL,
-    Date DATETIME NOT NULL,
-    TotalCalories FLOAT NOT NULL,
-    Details TEXT NOT NULL,
-    FOREIGN KEY (UserID) REFERENCES User(UserID)
-);
+    CREATE TABLE `diseases` (
+    `DiseasesID` int(11) NOT NULL AUTO_INCREMENT,
+    `NameDis` varchar(100) NOT NULL,
+    `Description` text NOT NULL,
+    PRIMARY KEY (`DiseasesID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    INSERT INTO `diseases` (`DiseasesID`, `NameDis`, `Description`) VALUES
+    (1, 'No condition', 'no health condition '),
+    (2, 'Hypertension', 'High blood pressure condition'),
+    (3, 'Diabetes', 'A metabolic disease causing high blood sugar'),
+    (4, 'Colon', 'Colon-related health condition'),
+    (5, 'Cholesterol', 'High cholesterol levels in the blood');
+
+    CREATE TABLE `fooditem` (
+    `FoodItemID` int(11) NOT NULL AUTO_INCREMENT,
+    `Name` varchar(255) DEFAULT NULL,
+    `Weight` decimal(8,2) DEFAULT NULL,
+    `Calories` decimal(8,2) DEFAULT NULL,
+    `Protein` decimal(8,2) DEFAULT NULL,
+    `Carbs` decimal(8,2) DEFAULT NULL,
+    `Fat` decimal(8,2) DEFAULT NULL,
+    `Sat_Fat` decimal(8,2) NOT NULL,
+    `Sugars` decimal(8,2) DEFAULT NULL,
+    `Fiber` decimal(8,2) DEFAULT 0.00,
+    `Sodium` decimal(8,2) DEFAULT 0.00,
+    `Cholesterol` decimal(8,2) DEFAULT 0.00,
+    `ModelLabel` varchar(255) DEFAULT NULL,
+    PRIMARY KEY (`FoodItemID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=410 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    INSERT INTO `fooditem` (`FoodItemID`, `Name`, `Weight`, `Calories`, `Protein`, `Carbs`, `Fat`, `Sat_Fat`, `Sugars`, `Fiber`, `Sodium`, `Cholesterol`, `ModelLabel`) VALUES
+    (1, 'Apple Pie', 100.00, 237.00, 1.90, 34.00, 11.00, 0.00, 18.00, 1.60, 250.00, 0.00, 'apple_pie'),
+    (2, 'Baby Back Ribs', 100.00, 361.00, 19.00, 0.00, 32.00, 0.00, 0.00, 0.00, 80.00, 110.00, 'baby_back_ribs'),
+    (3, 'Baklava', 100.00, 428.00, 6.00, 48.00, 25.00, 0.00, 30.00, 3.00, 100.00, 20.00, 'baklava'),
+    (4, 'Beef Carpaccio', 100.00, 150.00, 24.00, 0.00, 6.00, 0.00, 0.00, 0.00, 400.00, 60.00, 'beef_carpaccio'),
+    (5, 'Beef Tartare', 100.00, 180.00, 20.00, 1.00, 10.00, 0.00, 0.00, 0.00, 600.00, 75.00, 'beef_tartare'),
+    (6, 'Beet Salad', 100.00, 85.00, 1.50, 10.00, 4.50, 0.00, 7.00, 2.80, 300.00, 0.00, 'beet_salad'),
+    (7, 'Beignets', 100.00, 411.00, 6.00, 45.00, 23.00, 0.00, 15.00, 1.00, 200.00, 40.00, 'beignets'),
+    (8, 'Bibimbap', 100.00, 150.00, 8.00, 22.00, 3.50, 0.00, 3.00, 2.00, 450.00, 25.00, 'bibimbap'),
+    (9, 'Bread Pudding', 100.00, 250.00, 5.00, 35.00, 10.00, 0.00, 20.00, 1.00, 150.00, 60.00, 'bread_pudding'),
+    (10, 'Breakfast Burrito', 100.00, 240.00, 11.00, 22.00, 12.00, 0.00, 2.00, 2.00, 650.00, 120.00, 'breakfast_burrito'),
+    (11, 'Bruschetta', 100.00, 150.00, 4.00, 20.00, 6.00, 0.00, 2.50, 1.50, 320.00, 0.00, 'bruschetta'),
+    (12, 'Caesar Salad', 100.00, 190.00, 4.50, 8.00, 16.00, 0.00, 2.00, 1.60, 460.00, 25.00, 'caesar_salad'),
+    (13, 'Cannoli', 100.00, 255.00, 5.00, 28.00, 14.00, 0.00, 18.00, 0.50, 120.00, 30.00, 'cannoli'),
+    (14, 'Caprese Salad', 100.00, 180.00, 9.00, 3.00, 15.00, 0.00, 2.00, 0.50, 240.00, 35.00, 'caprese_salad'),
+    (15, 'Carrot Cake', 100.00, 415.00, 4.00, 48.00, 23.00, 0.00, 35.00, 2.00, 350.00, 60.00, 'carrot_cake'),
+    (16, 'Ceviche', 100.00, 98.00, 15.00, 7.00, 1.50, 0.00, 2.00, 1.00, 550.00, 40.00, 'ceviche'),
+    (17, 'Cheesecake', 100.00, 321.00, 5.50, 25.00, 22.00, 0.00, 22.00, 0.40, 310.00, 90.00, 'cheesecake'),
+    (18, 'Cheese Plate', 100.00, 350.00, 21.00, 2.00, 28.00, 0.00, 0.50, 0.00, 700.00, 95.00, 'cheese_plate'),
+    (19, 'Chicken Curry', 100.00, 130.00, 14.00, 6.00, 6.00, 0.00, 2.00, 1.50, 400.00, 45.00, 'chicken_curry'),
+    (20, 'Chicken Quesadilla', 100.00, 290.00, 15.00, 24.00, 15.00, 0.00, 2.00, 2.00, 750.00, 50.00, 'chicken_quesadilla'),
+    (21, 'Chicken Wings', 100.00, 290.00, 18.00, 0.00, 19.00, 0.00, 0.00, 0.00, 820.00, 85.00, 'chicken_wings'),
+    (22, 'Chocolate Cake', 100.00, 371.00, 5.30, 53.00, 15.00, 0.00, 40.00, 2.00, 310.00, 55.00, 'chocolate_cake'),
+    (23, 'Chocolate Mousse', 100.00, 225.00, 4.00, 16.00, 16.00, 0.00, 14.00, 1.00, 50.00, 95.00, 'chocolate_mousse'),
+    (24, 'Churros', 100.00, 447.00, 4.50, 55.00, 23.00, 0.00, 20.00, 2.00, 380.00, 30.00, 'churros'),
+    (25, 'Clam Chowder', 100.00, 163.00, 8.00, 12.00, 9.00, 0.00, 2.00, 1.00, 580.00, 35.00, 'clam_chowder'),
+    (26, 'Club Sandwich', 100.00, 220.00, 12.00, 20.00, 10.00, 0.00, 2.50, 2.00, 680.00, 45.00, 'club_sandwich'),
+    (27, 'Crab Cakes', 100.00, 160.00, 15.00, 8.00, 7.50, 0.00, 1.00, 0.50, 510.00, 90.00, 'crab_cakes'),
+    (28, 'Creme Brulee', 100.00, 310.00, 4.00, 18.00, 25.00, 0.00, 17.00, 0.00, 45.00, 140.00, 'creme_brulee'),
+    (29, 'Croque Madame', 100.00, 260.00, 14.00, 18.00, 15.00, 0.00, 2.00, 1.00, 720.00, 180.00, 'croque_madame'),
+    (30, 'Cup Cakes', 100.00, 305.00, 3.00, 45.00, 13.00, 0.00, 32.00, 0.50, 220.00, 40.00, 'cup_cakes'),
+    (31, 'Deviled Eggs', 100.00, 210.00, 13.00, 2.00, 16.00, 0.00, 1.00, 0.00, 520.00, 420.00, 'deviled_eggs'),
+    (32, 'Donuts', 100.00, 452.00, 4.90, 51.00, 25.00, 0.00, 27.00, 1.50, 320.00, 40.00, 'donuts'),
+    (33, 'Dumplings', 100.00, 124.00, 5.00, 15.00, 5.00, 0.00, 1.00, 1.00, 480.00, 15.00, 'dumplings'),
+    (34, 'Edamame', 100.00, 122.00, 11.00, 10.00, 5.00, 0.00, 2.20, 5.20, 6.00, 0.00, 'edamame'),
+    (35, 'Eggs Benedict', 100.00, 215.00, 11.00, 12.00, 14.00, 0.00, 1.50, 0.00, 580.00, 220.00, 'eggs_benedict'),
+    (36, 'Escargots', 100.00, 90.00, 16.00, 2.00, 2.00, 0.00, 0.00, 0.00, 400.00, 50.00, 'escargots'),
+    (37, 'Falafel', 100.00, 333.00, 13.00, 32.00, 17.00, 0.00, 2.00, 4.00, 290.00, 0.00, 'falafel'),
+    (38, 'Filet Mignon', 100.00, 267.00, 26.00, 0.00, 17.00, 0.00, 0.00, 0.00, 55.00, 85.00, 'filet_mignon'),
+    (39, 'Fish and Chips', 100.00, 230.00, 12.00, 20.00, 12.00, 0.00, 0.50, 1.50, 450.00, 45.00, 'fish_and_chips'),
+    (40, 'Foie Gras', 100.00, 462.00, 11.00, 4.60, 44.00, 0.00, 0.00, 0.00, 700.00, 150.00, 'foie_gras'),
+    (41, 'French Fries', 100.00, 312.00, 3.40, 41.00, 15.00, 0.00, 0.30, 3.80, 210.00, 0.00, 'french_fries'),
+    (42, 'French Onion Soup', 100.00, 70.00, 4.00, 8.00, 3.50, 0.00, 2.00, 1.00, 450.00, 10.00, 'french_onion_soup'),
+    (43, 'French Toast', 100.00, 229.00, 8.00, 25.00, 11.00, 0.00, 12.00, 1.50, 480.00, 120.00, 'french_toast'),
+    (44, 'Fried Calamari', 100.00, 175.00, 15.00, 8.00, 7.50, 0.00, 0.00, 0.00, 310.00, 230.00, 'fried_calamari'),
+    (45, 'Fried Rice', 100.00, 163.00, 3.50, 28.00, 4.00, 0.00, 1.00, 1.00, 600.00, 20.00, 'fried_rice'),
+    (46, 'Frozen Yogurt', 100.00, 159.00, 4.00, 24.00, 5.80, 0.00, 22.00, 0.00, 65.00, 15.00, 'frozen_yogurt'),
+    (47, 'Garlic Bread', 100.00, 350.00, 8.50, 42.00, 16.00, 0.00, 2.50, 2.00, 600.00, 5.00, 'garlic_bread'),
+    (48, 'Greek Salad', 100.00, 106.00, 3.80, 8.00, 8.20, 0.00, 2.50, 1.50, 420.00, 15.00, 'greek_salad'),
+    (49, 'Grilled Cheese Sandwich', 100.00, 370.00, 12.00, 30.00, 22.00, 0.00, 3.00, 1.50, 800.00, 60.00, 'grilled_cheese_sandwich'),
+    (50, 'Hamburger', 100.00, 250.00, 13.00, 31.00, 9.00, 0.00, 6.00, 2.00, 480.00, 30.00, 'hamburger'),
+    (51, 'Guacamole', 100.00, 157.00, 2.00, 9.00, 15.00, 0.00, 0.70, 7.00, 7.00, 0.00, 'guacamole'),
+    (52, 'Gyoza', 100.00, 203.00, 8.00, 24.00, 8.50, 0.00, 1.50, 1.00, 480.00, 20.00, 'gyoza'),
+    (53, 'Hamburger', 100.00, 250.00, 13.00, 31.00, 9.00, 0.00, 6.00, 2.00, 480.00, 30.00, 'hamburger'),
+    (54, 'Hot and Sour Soup', 100.00, 43.00, 2.50, 5.00, 1.50, 0.00, 2.00, 0.50, 420.00, 10.00, 'hot_and_sour_soup'),
+    (55, 'Hot Dog', 100.00, 290.00, 10.00, 18.00, 20.00, 0.00, 4.00, 0.50, 950.00, 55.00, 'hot_dog'),
+    (56, 'Hummus', 100.00, 166.00, 8.00, 14.00, 10.00, 0.00, 0.30, 6.00, 380.00, 0.00, 'hummus'),
+    (57, 'Ice Cream', 100.00, 207.00, 3.50, 24.00, 11.00, 0.00, 21.00, 0.70, 80.00, 45.00, 'ice_cream'),
+    (58, 'Lasagna', 100.00, 135.00, 11.00, 14.00, 4.50, 0.00, 2.50, 1.50, 450.00, 35.00, 'lasagna'),
+    (59, 'Lobster Bisque', 100.00, 120.00, 6.00, 9.00, 7.00, 0.00, 2.00, 0.50, 580.00, 55.00, 'lobster_bisque'),
+    (60, 'Lobster Roll Sandwich', 100.00, 255.00, 16.00, 22.00, 11.00, 0.00, 3.00, 1.20, 620.00, 90.00, 'lobster_roll_sandwich'),
+    (61, 'Macaroni and Cheese', 100.00, 164.00, 7.00, 20.00, 6.00, 0.00, 2.00, 1.00, 560.00, 25.00, 'macaroni_and_cheese'),
+    (62, 'Macarons', 100.00, 450.00, 7.00, 55.00, 22.00, 0.00, 48.00, 1.50, 120.00, 15.00, 'macarons'),
+    (63, 'Miso Soup', 100.00, 34.00, 2.50, 4.00, 1.20, 0.00, 1.00, 1.00, 850.00, 0.00, 'miso_soup'),
+    (64, 'Mussels', 100.00, 172.00, 24.00, 7.00, 4.50, 0.00, 0.00, 0.00, 370.00, 55.00, 'mussels'),
+    (65, 'Nachos', 100.00, 306.00, 8.00, 32.00, 16.00, 0.00, 1.50, 3.00, 600.00, 20.00, 'nachos'),
+    (66, 'Omelette', 100.00, 154.00, 11.00, 0.60, 12.00, 0.00, 0.50, 0.00, 160.00, 370.00, 'omelette'),
+    (67, 'Onion Rings', 100.00, 411.00, 3.90, 44.00, 24.00, 0.00, 4.50, 2.50, 480.00, 0.00, 'onion_rings'),
+    (68, 'Oysters', 100.00, 81.00, 9.00, 5.00, 2.30, 0.00, 0.00, 0.00, 420.00, 50.00, 'oysters'),
+    (69, 'Pad Thai', 100.00, 172.00, 7.00, 27.00, 4.00, 0.00, 8.00, 1.50, 340.00, 35.00, 'pad_thai'),
+    (70, 'Paella', 100.00, 156.00, 9.00, 22.00, 3.50, 0.00, 1.20, 1.50, 450.00, 40.00, 'paella'),
+    (71, 'Pancakes', 100.00, 227.00, 6.40, 28.00, 10.00, 0.00, 12.00, 1.00, 430.00, 60.00, 'pancakes'),
+    (72, 'Panna Cotta', 100.00, 298.00, 4.00, 15.00, 25.00, 0.00, 14.00, 0.00, 40.00, 85.00, 'panna_cotta'),
+    (73, 'Pasta Carbonara', 100.00, 215.00, 9.00, 25.00, 8.50, 0.00, 1.00, 1.20, 580.00, 110.00, 'pasta_carbonara'),
+    (74, 'Peasoop', 100.00, 75.00, 5.00, 12.00, 0.50, 0.00, 2.50, 4.50, 480.00, 0.00, 'pea_soup'),
+    (75, 'Peking Duck', 100.00, 337.00, 19.00, 0.00, 28.00, 0.00, 0.00, 0.00, 65.00, 90.00, 'peking_duck'),
+    (76, 'Pho', 100.00, 45.00, 3.50, 7.00, 0.50, 0.00, 1.50, 0.80, 550.00, 10.00, 'pho'),
+    (77, 'Pizza', 100.00, 266.00, 11.00, 33.00, 10.00, 0.00, 3.50, 2.30, 600.00, 20.00, 'pizza'),
+    (78, 'Pork Chop', 100.00, 242.00, 24.00, 0.00, 15.00, 0.00, 0.00, 0.00, 60.00, 80.00, 'pork_chop'),
+    (79, 'Prime Rib', 100.00, 350.00, 20.00, 0.00, 30.00, 0.00, 0.00, 0.00, 55.00, 85.00, 'prime_rib'),
+    (80, 'Pulled Pork Sandwich', 100.00, 320.00, 23.00, 42.00, 12.00, 0.00, 15.00, 1.80, 750.00, 70.00, 'pulled_pork_sandwich'),
+    (81, 'Ramen', 100.00, 436.00, 11.00, 52.00, 20.00, 0.00, 2.00, 2.00, 1500.00, 45.00, 'ramen'),
+    (82, 'Ravioli', 100.00, 203.00, 8.00, 28.00, 6.00, 0.00, 1.50, 1.80, 420.00, 35.00, 'ravioli'),
+    (83, 'Red Velvet Cake', 100.00, 367.00, 4.00, 50.00, 18.00, 0.00, 38.00, 0.80, 320.00, 60.00, 'red_velvet_cake'),
+    (84, 'Risotto', 100.00, 168.00, 4.20, 24.00, 6.00, 0.00, 1.00, 0.50, 480.00, 20.00, 'risotto'),
+    (85, 'Samosa', 100.00, 250.00, 6.00, 24.00, 15.00, 0.00, 2.00, 2.50, 410.00, 15.00, 'samosa'),
+    (86, 'Sashimi', 100.00, 41.00, 8.50, 0.00, 0.50, 0.00, 0.00, 0.00, 45.00, 25.00, 'sashimi'),
+    (87, 'Scallops', 100.00, 111.00, 20.00, 5.00, 1.00, 0.00, 0.00, 0.00, 660.00, 40.00, 'scallops'),
+    (88, 'Seaweed Salad', 100.00, 70.00, 1.00, 10.00, 3.00, 0.00, 5.00, 2.00, 820.00, 0.00, 'seaweed_salad'),
+    (89, 'Shrimp and Grits', 100.00, 260.00, 18.00, 24.00, 11.00, 0.00, 1.50, 1.50, 780.00, 160.00, 'shrimp_and_grits'),
+    (90, 'Spaghetti Bolognese', 100.00, 140.00, 7.50, 18.00, 4.00, 0.00, 2.50, 1.50, 380.00, 25.00, 'spaghetti_bolognese'),
+    (91, 'Spaghetti Carbonara', 100.00, 215.00, 9.00, 25.00, 8.50, 0.00, 1.00, 1.20, 580.00, 110.00, 'spaghetti_carbonara'),
+    (92, 'Spring Rolls', 100.00, 150.00, 4.50, 20.00, 7.00, 0.00, 2.50, 1.80, 420.00, 10.00, 'spring_rolls'),
+    (93, 'Steak', 100.00, 252.00, 27.00, 0.00, 15.00, 0.00, 0.00, 0.00, 55.00, 85.00, 'steak'),
+    (94, 'Strawberry Shortcake', 100.00, 273.00, 3.50, 38.00, 12.00, 0.00, 22.00, 1.20, 150.00, 45.00, 'strawberry_shortcake'),
+    (95, 'Sushi', 100.00, 143.00, 4.50, 28.00, 0.50, 0.00, 2.50, 0.50, 420.00, 15.00, 'sushi'),
+    (96, 'Tacos', 100.00, 226.00, 13.00, 20.00, 11.00, 0.00, 1.50, 2.50, 450.00, 35.00, 'tacos'),
+    (97, 'Takoyaki', 100.00, 175.00, 7.50, 22.00, 6.00, 0.00, 2.00, 0.80, 520.00, 20.00, 'takoyaki'),
+    (98, 'Tiramisu', 100.00, 300.00, 5.00, 30.00, 19.00, 0.00, 25.00, 0.50, 80.00, 65.00, 'tiramisu'),
+    (99, 'Tuna Tartare', 100.00, 130.00, 23.00, 1.00, 4.00, 0.00, 0.50, 0.00, 350.00, 40.00, 'tuna_tartare'),
+    (100, 'Waffles', 100.00, 291.00, 7.00, 33.00, 14.00, 0.00, 12.00, 1.50, 410.00, 55.00, 'waffles'),
+    (101, 'Yakisoba', 100.00, 200.00, 8.00, 28.00, 6.50, 0.00, 3.50, 1.80, 680.00, 15.00, 'yakisoba'),
+    (102, 'Bakhmari', 100.00, 280.00, 5.00, 40.00, 18.00, 4.00, 5.00, 3.00, 350.00, 0.00, NULL),
+    (103, 'Barwata', 100.00, 205.00, 6.00, 40.00, 5.00, 1.00, 1.00, 1.50, 250.00, 0.00, NULL),
+    (104, 'Lakham soup', 100.00, 215.00, 24.00, 4.50, 11.00, 3.00, 3.00, 1.50, 1850.00, 80.00, NULL),
+    (105, 'Cows\' milk', 100.00, 68.00, 3.30, 4.90, 4.10, 3.70, 4.80, 0.00, 63.00, 1.40, NULL),
+    (106, 'Skim milk', 100.00, 37.00, 3.70, 5.30, 0.01, 0.01, 5.20, 0.00, 65.00, 0.10, NULL),
+    (107, 'Buttermilk', 100.00, 52.00, 3.70, 5.30, 2.00, 1.60, 4.80, 0.00, 67.00, 4.10, NULL),
+    (108, 'Evaporated  milk (Canned)', 100.00, 134.00, 6.90, 10.00, 7.50, 4.60, 10.10, 0.00, 106.00, 33.00, NULL),
+    (109, 'Fortified Whole milk', 100.00, 61.00, 3.30, 4.70, 3.30, 1.80, 4.80, 0.00, 43.00, 14.00, NULL),
+    (110, 'Powdered milk', 100.00, 200.00, 26.20, 37.90, 27.20, 23.30, 38.00, 0.00, 496.00, 97.00, NULL),
+    (111, 'skim Milk(Non-fat)', 100.00, 34.00, 3.40, 5.00, 0.10, 0.04, 5.20, 0.00, 42.00, 0.80, NULL),
+    (112, 'skim Milk Powder', 100.00, 363.00, 36.00, 52.00, 0.70, 0.30, 52.00, 0.00, 533.00, 10.00, NULL),
+    (113, 'Goats\' milk', 100.00, 68.00, 3.30, 4.30, 4.10, 3.30, 4.50, 0.00, 49.00, 11.00, NULL),
+    (114, 'Ice cream (Vanilla)', 100.00, 200.70, 3.50, 22.60, 10.90, 6.60, 21.00, 0.70, 80.30, 43.80, NULL),
+    (115, 'Cocoa', 100.00, 93.30, 3.20, 10.30, 4.40, 4.00, 10.00, 0.00, 72.60, 11.90, NULL),
+    (116, 'skim. milk', 100.00, 51.20, 7.20, 5.20, 1.60, 1.20, 5.20, 0.40, 120.00, 1.20, NULL),
+    (117, '(cornstarch)', 100.00, 110.90, 3.60, 16.10, 4.00, 3.60, 0.00, 0.00, 90.70, 0.00, NULL),
+    (118, 'Custard', 100.00, 114.90, 5.20, 11.30, 5.60, 4.40, 13.50, 0.00, 106.90, 89.90, NULL),
+    (119, 'Ice cream', 100.00, 159.00, 3.20, 15.40, 9.60, 8.50, 21.00, 0.00, 88.30, 44.10, NULL),
+    (120, 'Ice milk', 100.00, 144.70, 4.70, 16.80, 5.30, 4.70, 17.00, 0.00, 110.00, 7.90, NULL),
+    (121, 'Cream or half-and-half', 100.00, 141.70, 3.30, 4.20, 12.50, 10.80, 4.30, 0.00, 70.80, 30.80, NULL),
+    (122, 'Whipping Cream (Heavy)', 100.00, 336.10, 2.10, 2.80, 36.10, 22.70, 2.80, 0.00, 67.20, 137.00, NULL),
+    (123, 'Cottage Cheese (Low fat)', 100.00, 72.10, 12.40, 2.70, 1.00, 0.70, 2.70, 0.00, 159.30, 4.00, NULL),
+    (124, 'Cheddar Cheese cube', 100.00, 400.00, 24.70, 2.40, 32.90, 20.60, 52.90, 0.00, 617.60, 105.90, NULL),
+    (125, 'Cheddar Cheese (shredded)', 100.00, 403.00, 24.90, 1.30, 33.10, 21.10, 0.50, 0.00, 621.00, 105.00, NULL),
+    (126, 'Cream cheese', 100.00, 353.60, 7.50, 4.30, 35.70, 21.40, 321.40, 0.00, 325.00, 100.00, NULL),
+    (127, 'Processed cheese', 100.00, 375.00, 25.00, 0.00, 32.10, 28.60, 128.60, 0.00, 407.10, 96.40, NULL),
+    (128, 'Roquefort type', 100.00, 375.00, 21.40, 0.00, 32.10, 28.60, 200.00, 0.00, 353.60, 89.30, NULL),
+    (129, 'Swiss', 100.00, 375.00, 25.00, 0.00, 28.60, 25.00, 150.00, 0.00, 403.60, 92.90, NULL),
+    (130, 'Eggs, raw', 100.00, 144.00, 12.60, 0.80, 9.60, 3.20, 70.00, 0.00, 142.00, 372.00, NULL),
+    (131, 'Eggs Scrambled or fried', 100.00, 171.90, 10.20, 1.20, 12.50, 4.30, 109.40, 0.00, 166.40, 400.00, NULL),
+    (132, 'Yolks', 100.00, 352.90, 17.60, 0.00, 29.40, 23.50, 58.80, 0.00, 294.10, 1085.30, NULL),
+    (133, 'Butter, Unsalted (1 T.)', 100.00, 714.30, 0.10, 0.10, 78.60, 50.00, 7.10, 0.00, 14.30, 214.30, NULL),
+    (134, 'Butter, Salted (1 T.) ', 100.00, 100.00, 0.01, 0.01, 11.00, 7.00, 1.00, 0.00, 95.00, 30.00, NULL),
+    (135, 'Butter, Salted', 100.00, 719.47, 0.88, 0.09, 81.42, 51.33, 6.19, 0.00, 547.79, 215.04, NULL),
+    (136, 'Butter, Unsalted', 100.00, 719.47, 0.88, 0.09, 81.42, 51.33, 6.19, 0.00, 9.73, 215.04, NULL),
+    (137, 'Hydrogenated cooking fat', 100.00, 665.00, 0.00, 0.00, 100.00, 88.00, 0.00, 0.00, 100.00, 0.00, NULL),
+    (138, 'Lard', 100.00, 901.82, 0.00, 0.00, 100.00, 83.64, 0.00, 0.00, 110.00, 95.45, NULL),
+    (139, 'Margarine', 100.00, 714.29, 0.09, 0.09, 80.36, 16.07, 0.00, 0.00, 937.50, 0.00, NULL),
+    (140, 'Mayonnaise', 100.00, 666.67, 0.67, 0.67, 73.33, 11.33, 66.67, 0.00, 600.00, 40.00, NULL),
+    (141, 'Corn oil', 100.00, 892.86, 0.00, 0.00, 100.00, 35.71, 0.00, 0.00, 100.00, 0.00, NULL),
+    (142, 'Olive oil', 100.00, 892.86, 0.00, 0.00, 100.00, 21.43, 0.00, 0.00, 100.00, 0.00, NULL),
+    (143, 'Safflower seed oil', 100.00, 892.86, 0.00, 0.00, 100.00, 21.43, 0.00, 0.00, 100.00, 0.00, NULL),
+    (144, 'French dressing', 100.00, 400.00, 0.07, 13.33, 40.00, 13.33, 1533.33, 0.00, 66.67, 0.00, NULL),
+    (145, 'Thousand Island sauce', 100.00, 500.00, 0.07, 6.67, 53.33, 20.00, 1633.33, 0.00, 66.67, 13.33, NULL),
+    (146, 'Bacon', 100.00, 593.75, 25.00, 6.25, 50.00, 43.75, 0.00, 0.00, 437.50, 112.50, NULL),
+    (147, 'Beef, Roast (Cooked)', 100.00, 247.06, 27.06, 0.00, 14.12, 5.65, 0.00, 0.00, 64.71, 92.94, NULL),
+    (148, 'Hamburger', 100.00, 288.24, 24.71, 0.00, 20.00, 17.65, 0.00, 0.00, 458.82, 90.59, NULL),
+    (149, 'Ground lean', 100.00, 217.65, 28.24, 0.00, 11.76, 10.59, 0.00, 0.00, 435.29, 87.06, NULL),
+    (150, 'Roast beef', 100.00, 458.82, 18.82, 0.00, 42.35, 41.18, 0.00, 0.00, 324.71, 94.12, NULL),
+    (151, 'Steak', 100.00, 388.24, 23.53, 0.00, 31.76, 29.41, 0.00, 0.00, 384.71, 94.12, NULL),
+    (152, 'Corned beef (Canned)', 100.00, 247.06, 25.88, 0.00, 15.29, 7.06, 47.06, 0.00, 1117.65, 97.65, NULL),
+    (153, 'Corned beef hash canned', 100.00, 141.18, 14.12, 7.06, 9.41, 8.24, 100.00, 0.01, 235.29, 49.41, NULL),
+    (154, 'Corned beef hash Dried', 100.00, 205.36, 33.93, 0.00, 7.14, 7.14, 0.00, 0.00, 516.07, 89.29, NULL),
+    (155, 'Beef Pot-pie', 100.00, 211.45, 7.93, 16.74, 12.33, 5.29, 1.41, 0.88, 352.42, 23.79, NULL),
+    (156, 'Corned beef hash Stew', 100.00, 78.72, 6.38, 6.38, 4.26, 3.83, 106.38, 0.00, 112.77, 27.66, NULL),
+    (157, 'Fried chicken', 100.00, 258.82, 24.71, 0.00, 15.29, 4.24, 0.00, 0.00, 329.41, 88.24, NULL),
+    (158, 'Roasted chicken', 100.00, 290.00, 25.00, 0.00, 20.00, 16.00, 0.00, 0.00, 395.00, 88.00, NULL),
+    (159, 'Chicken livers', 100.00, 167.00, 24.00, 0.80, 5.00, 1.60, 85.00, 0.00, 74.10, 563.00, NULL),
+    (160, 'Duck (Roasted, no skin)', 100.00, 201.00, 23.50, 0.00, 11.20, 4.20, 0.00, 0.00, 73.90, 89.00, NULL),
+    (161, 'Lamp, Roast (Lean only)', 100.00, 188.24, 24.71, 0.00, 9.41, 3.53, 0.00, 0.00, 70.60, 94.12, NULL),
+    (162, 'Lamp, Leg roasted', 100.00, 186.05, 25.58, 0.00, 8.14, 2.91, 0.00, 0.00, 64.00, 94.19, NULL),
+    (163, 'Turkey', 100.00, 265.00, 27.00, 0.00, 15.00, 0.00, 0.00, 0.00, 64.00, 76.00, NULL),
+    (164, 'Veal', 100.00, 217.60, 27.10, 0.00, 10.60, 9.40, 0.00, 0.00, 416.50, 103.50, NULL),
+    (165, 'Roast', 100.00, 236.40, 25.50, 0.00, 16.50, 15.30, 0.00, 0.00, 245.90, 103.50, NULL),
+    (166, 'Clams', 100.00, 81.30, 12.50, 2.40, 1.20, 0.00, 47.10, 0.00, 217.60, 57.00, NULL),
+    (167, 'Cod', 100.00, 170.00, 28.00, 0.00, 5.00, 0.00, 0.00, 0.00, 425.00, 43.00, NULL),
+    (168, 'Crab meat', 100.00, 93.00, 16.00, 1.20, 2.40, 0.00, 0.00, 0.00, 251.80, 85.00, NULL),
+    (169, 'Fish sticks fried', 100.00, 176.00, 19.00, 7.10, 8.90, 4.50, 71.40, 0.00, 277.70, 72.00, NULL),
+    (170, 'Flounder', 100.00, 202.00, 30.00, 0.00, 8.00, 0.00, 0.00, 0.00, 458.00, 68.00, NULL),
+    (171, 'Haddock', 100.00, 74.00, 16.30, 0.00, 0.45, 0.08, 0.00, 0.00, 213.00, 57.00, NULL),
+    (172, 'Halibut', 100.00, 182.00, 26.00, 0.00, 8.00, 0.00, 0.00, 0.00, 398.00, 41.00, NULL),
+    (173, 'Herring', 100.00, 176.00, 14.00, 0.00, 13.00, 0.00, 0.00, 0.00, 343.00, 77.00, NULL),
+    (174, 'Lobster', 100.00, 91.00, 18.20, 0.00, 1.00, 0.00, 0.00, 0.00, 271.00, 127.00, NULL),
+    (175, 'Mackerel (Canned)', 100.00, 191.00, 19.10, 0.00, 10.60, 2.70, 0.00, 0.00, 447.10, 64.00, NULL),
+    (176, 'Oysters', 100.00, 66.00, 8.00, 3.90, 2.20, 101.70, 252.20, 0.00, 47.80, 115.00, NULL),
+    (177, 'Oyster stew', 100.00, 74.80, 3.50, 5.80, 5.80, 3.30, 329.20, 0.00, 145.80, 105.00, NULL),
+    (178, 'Salmon', 100.00, 182.00, 22.00, 0.00, 5.90, 1.20, 0.00, 0.00, 305.90, 47.00, NULL),
+    (179, 'Sardines', 100.00, 174.00, 19.30, 0.00, 10.60, 4.70, 0.00, 0.00, 398.80, 120.00, NULL),
+    (180, 'Scallops (Steamed)', 100.00, 81.00, 14.80, 0.00, 14.00, 0.20, 0.00, 0.00, 265.00, 41.00, NULL),
+    (181, 'Shad', 100.00, 170.00, 18.80, 0.00, 11.80, 0.00, 0.00, 0.00, 364.70, 65.00, NULL),
+    (182, 'Shrimp', 100.00, 91.00, 18.20, 0.00, 1.20, 0.00, 0.00, 0.00, 407.10, 161.00, NULL),
+    (183, 'Swordfish', 100.00, 118.00, 20.90, 0.00, 6.00, 0.00, 0.00, 0.00, 411.00, 78.00, NULL),
+    (184, 'Tuna (Canned)', 100.00, 170.00, 25.00, 0.00, 0.60, 0.10, 0.00, 0.00, 341.20, 26.00, NULL),
+    (185, 'Artichoke (Boiled)', 100.00, 16.00, 1.20, 8.60, 0.10, 0.00, 1.00, 6.20, 74.10, 0.00, NULL),
+    (186, 'Asparagus', 100.00, 18.00, 2.20, 3.10, 0.00, 0.00, 1.90, 0.50, 21.90, 0.00, NULL),
+    (187, 'Beans', 100.00, 25.00, 1.60, 4.80, 0.00, 0.00, 3.30, 0.60, 21.60, 0.00, NULL),
+    (188, 'Lima Beans (Boiled)', 100.00, 113.00, 6.00, 22.90, 0.30, 0.10, 1.50, 5.30, 5.90, 0.00, NULL),
+    (189, 'Navy Beans (Boiled)', 100.00, 106.00, 6.50, 22.20, 0.60, 0.10, 0.60, 10.60, 2.80, 0.00, NULL),
+    (190, 'Red kidney', 100.00, 108.50, 7.20, 16.20, 0.40, 0.00, 2.10, 1.00, 119.20, 0.00, NULL),
+    (191, 'Bean sprouts', 100.00, 35.00, 3.80, 6.00, 0.00, 0.00, 4.00, 0.60, 42.00, 0.00, NULL),
+    (192, 'Beet greens', 100.00, 18.00, 1.80, 6.00, 0.00, 0.00, 0.50, 1.40, 42.00, 0.00, NULL),
+    (193, 'Beetroots', 100.00, 43.00, 1.60, 9.60, 0.00, 0.00, 6.80, 0.00, 182.00, 0.00, NULL),
+    (194, 'Broccoli', 100.00, 68.00, 3.30, 4.90, 4.10, 3.70, 4.80, 0.00, 63.00, 1.40, NULL),
+    (195, 'Brussels sprouts', 100.00, 37.00, 3.70, 5.30, 0.01, 0.01, 5.20, 0.00, 65.00, 0.10, NULL),
+    (196, 'Sauerkraut', 100.00, 52.00, 3.70, 5.30, 2.00, 1.60, 4.80, 0.00, 67.00, 4.10, NULL),
+    (197, 'Steamed cabbage', 100.00, 134.00, 6.90, 10.00, 7.50, 4.60, 10.10, 0.00, 106.00, 33.00, NULL),
+    (198, 'Carrots, Raw Strips', 100.00, 61.00, 3.30, 4.70, 3.30, 1.80, 4.80, 0.00, 43.00, 14.00, NULL),
+    (199, 'Cauliflower', 100.00, 25.00, 1.92, 4.97, 0.28, 0.13, 1.90, 2.00, 30.00, 0.00, NULL),
+    (200, 'Celery', 100.00, 34.00, 3.40, 5.00, 0.10, 0.05, 5.10, 0.00, 52.00, 0.30, NULL),
+    (201, 'Stalk raw', 100.00, 67.00, 3.50, 4.60, 4.10, 2.70, 4.50, 0.00, 50.00, 11.00, NULL),
+    (202, 'Chard steamed', 100.00, 340.00, 3.00, 28.00, 28.00, 17.00, 28.00, 0.00, 96.00, 100.00, NULL),
+    (203, 'Collards', 100.00, 62.00, 3.50, 4.70, 3.30, 2.10, 4.70, 0.00, 46.00, 13.00, NULL),
+    (204, 'Corn (On the cobe)', 100.00, 717.00, 0.90, 0.10, 81.10, 51.40, 0.10, 0.00, 11.00, 215.00, NULL),
+    (205, 'Corn cooked or canned', 100.00, 717.00, 0.90, 0.10, 81.10, 51.40, 0.10, 0.00, 643.00, 215.00, NULL),
+    (206, 'Cucumbers', 100.00, 884.00, 0.00, 0.00, 100.00, 25.00, 0.00, 0.00, 0.00, 0.00, NULL),
+    (207, 'Dandelion greens', 100.00, 45.00, 2.70, 9.40, 0.70, 0.17, 0.71, 3.50, 76.00, 0.00, NULL),
+    (208, 'Eggplant', 100.00, 717.00, 0.20, 0.70, 80.70, 14.90, 0.00, 0.00, 11.00, 0.00, NULL),
+    (209, 'Endive', 100.00, 717.00, 0.20, 0.70, 80.70, 14.90, 0.00, 0.00, 943.00, 0.00, NULL),
+    (210, 'Kale', 100.00, 680.00, 1.00, 6.70, 74.80, 11.60, 6.70, 0.00, 635.00, 42.00, NULL),
+    (211, 'Kohlrabi', 100.00, 884.00, 0.00, 0.00, 100.00, 12.90, 0.00, 0.00, 0.00, 0.00, NULL),
+    (212, 'Lambsquarters (Steamed)', 100.00, 884.00, 0.00, 0.00, 100.00, 13.50, 0.00, 0.00, 0.00, 0.00, NULL),
+    (213, 'Lentils', 100.00, 884.00, 0.00, 0.00, 100.00, 16.90, 0.00, 0.00, 0.00, 0.00, NULL),
+    (214, 'Lettuce', 100.00, 884.00, 0.00, 0.00, 100.00, 6.20, 0.00, 0.00, 0.00, 0.00, NULL),
+    (215, 'Iceberg', 100.00, 268.00, 17.20, 0.00, 21.80, 10.20, 0.00, 0.00, 59.00, 67.00, NULL),
+    (216, 'Mushrooms canned', 100.00, 215.00, 18.60, 0.00, 15.10, 4.30, 0.00, 0.00, 67.00, 75.00, NULL),
+    (217, 'Mustard greens', 100.00, 294.00, 15.60, 0.00, 25.40, 11.80, 0.00, 0.00, 63.00, 84.00, NULL),
+    (218, 'Okra', 100.00, 297.00, 15.30, 0.00, 25.80, 9.30, 0.00, 0.00, 54.00, 77.00, NULL),
+    (219, 'Onions', 100.00, 189.00, 21.60, 0.00, 10.80, 3.20, 0.00, 0.00, 61.00, 68.00, NULL),
+    (220, 'Raw, Parsley', 100.00, 172.00, 19.30, 0.00, 10.10, 4.40, 0.00, 0.00, 76.00, 86.00, NULL),
+    (221, 'Parsnips', 100.00, 91.00, 18.80, 0.00, 1.20, 0.30, 0.00, 0.00, 61.00, 48.00, NULL),
+    (222, 'Peas', 100.00, 91.00, 18.80, 1.00, 1.20, 0.30, 0.00, 0.00, 296.00, 72.00, NULL),
+    (223, 'Peas, Frozen (Boiled)', 100.00, 91.00, 18.80, 1.00, 1.20, 0.30, 0.00, 0.00, 148.00, 152.00, NULL),
+    (224, 'Split cooked peas', 100.00, 52.00, 0.30, 13.80, 0.20, 0.10, 10.40, 2.40, 1.00, 0.00, NULL),
+    (225, 'heated peas', 100.00, 89.00, 1.10, 22.80, 0.30, 0.10, 12.20, 2.60, 1.00, 0.00, NULL),
+    (226, 'Peppers canned', 100.00, 32.00, 0.60, 8.10, 0.10, 0.10, 7.00, 1.10, 0.00, 0.00, NULL),
+    (227, 'Peppers with beef and crumbs', 100.00, 69.00, 0.70, 18.10, 0.20, 0.10, 15.50, 0.90, 2.00, 0.00, NULL),
+    (228, 'French-fried', 100.00, 29.00, 1.10, 9.30, 0.30, 0.10, 2.50, 2.80, 2.00, 0.00, NULL),
+    (229, 'Potatoes Mashed with milk and butter', 100.00, 47.00, 0.90, 11.80, 0.10, 0.10, 9.40, 2.40, 0.00, 0.00, NULL),
+    (230, 'Potatoes (Boiled, peeled)', 100.00, 39.00, 0.90, 9.50, 0.30, 0.10, 8.40, 1.50, 0.00, 0.00, NULL),
+    (231, 'Scalloped with cheese potatoes', 100.00, 57.00, 0.40, 15.20, 0.10, 0.10, 9.80, 3.10, 1.00, 0.00, NULL),
+    (232, 'Steamed potatoes before peeling', 100.00, 50.00, 0.50, 13.10, 0.10, 0.10, 9.90, 1.40, 1.00, 0.00, NULL),
+    (233, 'Potato chips', 100.00, 46.00, 0.70, 11.40, 0.30, 0.10, 9.90, 1.40, 0.00, 0.00, NULL),
+    (234, 'Radishes', 100.00, 32.00, 0.70, 7.70, 0.30, 0.10, 4.90, 2.00, 1.00, 0.00, NULL),
+    (235, 'Rutabagas', 100.00, 30.00, 0.60, 7.60, 0.20, 0.10, 6.20, 0.40, 1.00, 0.00, NULL),
+    (236, 'Soybeans', 100.00, 266.00, 8.90, 49.40, 3.30, 0.80, 5.70, 2.70, 491.00, 0.00, NULL),
+    (237, 'Spinach', 100.00, 247.00, 12.90, 41.40, 3.40, 0.70, 4.30, 7.00, 455.00, 0.00, NULL),
+    (238, 'Squash, Winter (Baked)', 100.00, 357.00, 7.50, 84.10, 0.40, 0.10, 8.40, 3.30, 729.00, 0.00, NULL),
+    (239, 'Sweet potatoes', 100.00, 389.00, 16.90, 66.30, 6.90, 1.20, 1.00, 10.60, 2.00, 0.00, NULL),
+    (240, 'Candied', 100.00, 130.00, 2.70, 28.20, 0.30, 0.10, 0.10, 0.40, 1.00, 0.00, NULL),
+    (241, 'Tomatoes, Raw', 100.00, 111.00, 2.60, 23.00, 0.90, 0.20, 0.40, 1.80, 5.00, 0.00, NULL),
+    (242, 'Tomato juice', 100.00, 158.00, 5.80, 30.90, 0.90, 0.20, 0.60, 1.80, 1.00, 0.00, NULL),
+    (243, 'Tomato catsup', 100.00, 579.00, 21.20, 21.60, 49.90, 3.80, 4.40, 12.50, 1.00, 0.00, NULL),
+    (244, 'Turnip greens', 100.00, 656.00, 14.30, 12.30, 66.40, 15.10, 2.30, 7.50, 3.00, 0.00, NULL),
+    (245, 'Turnips (Boiled and Diced)', 100.00, 553.00, 18.20, 30.20, 43.80, 7.80, 5.90, 3.30, 12.00, 0.00, NULL),
+    (246, 'Watercress', 100.00, 628.00, 15.00, 16.70, 60.80, 4.50, 4.30, 9.70, 0.00, 0.00, NULL),
+    (247, 'Apple juice canned', 100.00, 567.00, 25.80, 16.10, 49.20, 6.30, 4.00, 8.50, 18.00, 0.00, NULL),
+    (248, 'Apple vinegar', 100.00, 691.00, 9.20, 13.90, 72.00, 6.20, 4.00, 9.60, 0.00, 0.00, NULL),
+    (249, 'Apple (Fresh, with skin)', 100.00, 654.00, 15.20, 13.70, 65.20, 6.10, 2.60, 6.70, 2.00, 0.00, NULL),
+    (250, 'Stewed or canned', 100.00, 20.00, 2.20, 3.90, 0.10, 0.10, 1.90, 2.10, 2.00, 0.00, NULL),
+    (251, 'Apricots (Canned)', 100.00, 31.00, 1.80, 7.00, 0.20, 0.10, 3.30, 2.70, 6.00, 0.00, NULL),
+    (252, 'Tuna Bechamel pasta', 100.00, 185.00, 10.00, 18.50, 8.00, 3.00, 3.00, 1.50, 350.00, 37.50, NULL),
+    (253, 'Apricots, Dried', 100.00, 43.00, 1.60, 9.60, 0.20, 0.10, 6.80, 2.80, 78.00, 0.00, NULL),
+    (254, 'Apricots, Fresh', 100.00, 34.00, 2.80, 6.60, 0.40, 0.10, 1.70, 2.60, 33.00, 0.00, NULL),
+    (255, 'Nectarine', 100.00, 44.00, 1.10, 10.60, 0.30, 0.00, 8.00, 1.70, 0.00, 0.00, NULL),
+    (256, 'Avocado', 100.00, 160.00, 2.00, 8.50, 14.70, 2.10, 0.70, 6.70, 7.00, 0.00, NULL),
+    (257, 'Banana', 100.00, 89.00, 1.10, 22.80, 0.30, 0.10, 12.20, 2.60, 1.00, 0.00, NULL),
+    (258, 'Blackberries', 100.00, 43.00, 1.40, 9.60, 0.50, 0.00, 4.90, 5.30, 1.00, 0.00, NULL),
+    (259, 'Blueberries', 100.00, 57.00, 0.70, 14.50, 0.30, 0.00, 10.00, 2.40, 1.00, 0.00, NULL),
+    (260, 'Cantaloupe', 100.00, 34.00, 0.80, 8.20, 0.20, 0.10, 7.90, 0.90, 16.00, 0.00, NULL),
+    (261, 'Cherries, Fresh', 100.00, 50.00, 1.00, 12.20, 0.30, 0.10, 8.50, 0.60, 0.00, 0.00, NULL),
+    (262, 'Cranberry sauce sweetened', 100.00, 151.00, 0.10, 38.30, 0.10, 0.00, 32.00, 1.10, 5.00, 0.00, NULL),
+    (263, 'Dates', 100.00, 282.00, 2.50, 75.00, 0.40, 0.00, 63.00, 8.00, 2.00, 0.00, NULL),
+    (264, 'Figs, Fresh', 100.00, 74.00, 0.80, 19.20, 0.30, 0.10, 16.30, 2.90, 1.00, 0.00, NULL),
+    (265, 'figs Canned with syrup', 100.00, 107.00, 0.50, 27.60, 0.10, 0.00, 24.00, 2.50, 1.00, 0.00, NULL),
+    (266, 'Fruit cocktail (Canned)', 100.00, 71.00, 0.40, 18.20, 0.10, 0.00, 16.00, 1.40, 5.00, 0.00, NULL),
+    (267, 'Grapefruit sections', 100.00, 32.00, 0.50, 8.10, 0.10, 0.00, 7.00, 1.10, 0.00, 0.00, NULL),
+    (268, 'Grapefruit, fresh, 5\" diameter', 100.00, 42.00, 0.80, 10.70, 0.10, 0.00, 7.00, 1.60, 0.00, 0.00, NULL),
+    (269, 'Grapefruit juice', 100.00, 39.00, 0.50, 9.20, 0.10, 0.00, 9.00, 0.10, 1.00, 0.00, NULL),
+    (270, 'Grapes, European', 100.00, 69.00, 0.70, 18.10, 0.20, 0.10, 15.50, 0.90, 2.00, 0.00, NULL),
+    (271, 'Grape juice', 100.00, 60.00, 0.40, 14.80, 0.10, 0.00, 14.20, 0.10, 5.00, 0.00, NULL),
+    (272, 'Lemon juice', 100.00, 22.00, 0.40, 6.90, 0.20, 0.00, 2.50, 0.30, 1.00, 0.00, NULL),
+    (273, 'Lemonade concentratefrozen', 100.00, 197.00, 0.20, 52.00, 0.10, 0.00, 47.00, 0.00, 6.00, 0.00, NULL),
+    (274, 'Limeade concentrate frozen', 100.00, 179.00, 0.10, 48.00, 0.10, 0.00, 44.00, 0.00, 8.00, 0.00, NULL),
+    (275, 'Olives large', 100.00, 115.00, 0.80, 6.30, 10.70, 1.40, 0.00, 3.20, 735.00, 0.00, NULL),
+    (276, 'OlivesRipe', 100.00, 116.00, 0.80, 6.00, 10.90, 1.40, 0.00, 3.30, 735.00, 0.00, NULL),
+    (277, 'Oranges 3\" diameter', 100.00, 47.00, 0.90, 11.80, 0.10, 0.00, 9.40, 2.40, 0.00, 0.00, NULL),
+    (278, 'Orange juice', 100.00, 45.00, 0.70, 10.40, 0.20, 0.00, 8.40, 0.20, 1.00, 0.00, NULL),
+    (279, 'Frozen orange juice', 100.00, 51.00, 0.60, 12.00, 0.10, 0.00, 10.00, 0.10, 2.00, 0.00, NULL),
+    (280, 'Papaya', 100.00, 43.00, 0.50, 10.80, 0.30, 0.10, 7.80, 1.70, 8.00, 0.00, NULL),
+    (281, 'Peaches', 100.00, 39.00, 0.90, 9.50, 0.30, 0.00, 8.40, 1.50, 0.00, 0.00, NULL),
+    (282, 'Pears', 100.00, 57.00, 0.40, 15.20, 0.10, 0.00, 9.80, 3.10, 1.00, 0.00, NULL),
+    (283, 'Persimmons', 100.00, 70.00, 0.60, 18.60, 0.20, 0.00, 12.50, 3.60, 1.00, 0.00, NULL),
+    (284, 'Pineapple', 100.00, 50.00, 0.50, 13.10, 0.10, 0.00, 9.90, 1.40, 1.00, 0.00, NULL),
+    (285, 'Pineapple Crushed', 100.00, 60.00, 0.40, 15.60, 0.10, 0.00, 13.00, 1.00, 1.00, 0.00, NULL),
+    (286, 'Pineapple, Raw', 100.00, 50.00, 0.50, 13.10, 0.10, 0.00, 9.90, 1.40, 1.00, 0.00, NULL),
+    (287, 'Pineapple juice', 100.00, 53.00, 0.40, 12.90, 0.10, 0.00, 10.00, 0.20, 1.00, 0.00, NULL),
+    (288, 'Plums, Raw', 100.00, 46.00, 0.70, 11.40, 0.30, 0.00, 9.90, 1.40, 0.00, 0.00, NULL),
+    (289, 'Prunes', 100.00, 240.00, 2.20, 63.90, 0.40, 0.10, 38.10, 7.10, 2.00, 0.00, NULL),
+    (290, 'Prune juice', 100.00, 71.00, 0.60, 17.50, 0.00, 0.00, 16.40, 1.00, 10.00, 0.00, NULL),
+    (291, 'Raisins', 100.00, 299.00, 3.10, 79.20, 0.50, 0.10, 59.20, 3.70, 11.00, 0.00, NULL),
+    (292, 'Raspberries, Raw', 100.00, 52.00, 1.20, 11.90, 0.70, 0.00, 4.40, 6.50, 1.00, 0.00, NULL),
+    (293, 'Rhubarb sweetened', 100.00, 116.00, 0.50, 29.50, 0.10, 0.00, 26.00, 1.10, 2.00, 0.00, NULL),
+    (294, 'Strawberries, Raw', 100.00, 32.00, 0.70, 7.70, 0.30, 0.00, 4.90, 2.00, 1.00, 0.00, NULL),
+    (295, 'Tangerines ,Row', 100.00, 53.00, 0.80, 13.30, 0.30, 0.00, 10.60, 1.80, 2.00, 0.00, NULL),
+    (296, 'Watermelon', 100.00, 30.00, 0.60, 7.60, 0.20, 0.00, 6.20, 0.40, 1.00, 0.00, NULL),
+    (297, 'Biscuits', 100.00, 353.00, 7.00, 45.00, 16.00, 4.30, 2.20, 1.50, 580.00, 0.00, NULL),
+    (298, 'Bread, White', 100.00, 265.00, 9.00, 49.00, 3.20, 0.70, 5.00, 2.70, 491.00, 0.00, NULL),
+    (299, 'Rye Bread', 100.00, 259.00, 8.50, 48.00, 3.30, 0.60, 3.90, 5.80, 603.00, 0.00, NULL),
+    (300, 'Whole-Wheat Bread', 100.00, 247.00, 13.00, 41.00, 3.40, 0.70, 6.00, 7.00, 450.00, 0.00, NULL),
+    (301, 'Cornbread', 100.00, 266.00, 6.70, 38.00, 9.50, 2.30, 6.40, 2.20, 560.00, 55.00, NULL),
+    (302, 'Cornflakes', 100.00, 357.00, 7.50, 84.00, 0.40, 0.10, 9.50, 3.30, 729.00, 0.00, NULL),
+    (303, 'Corn grits cooked', 100.00, 71.00, 1.40, 15.50, 0.20, 0.00, 0.10, 0.50, 141.00, 0.00, NULL),
+    (304, 'Corn meal', 100.00, 362.00, 8.10, 77.00, 3.60, 0.50, 0.60, 7.30, 5.00, 0.00, NULL),
+    (305, 'Crackers', 100.00, 490.00, 9.50, 61.00, 23.00, 4.00, 7.00, 2.50, 950.00, 0.00, NULL),
+    (306, 'Soda (Cola)', 100.00, 38.00, 0.00, 9.80, 0.00, 0.00, 9.00, 0.00, 4.00, 0.00, NULL),
+    (307, 'Farina', 100.00, 360.00, 10.50, 77.00, 1.00, 0.20, 0.00, 3.00, 2.00, 0.00, NULL),
+    (308, 'Flour', 100.00, 364.00, 10.00, 76.00, 1.00, 0.20, 0.30, 2.70, 2.00, 0.00, NULL),
+    (309, 'Wheat (all purpose)', 100.00, 364.00, 10.30, 76.30, 1.00, 0.20, 0.30, 2.70, 2.00, 0.00, NULL),
+    (310, 'Wheat (whole)', 100.00, 339.00, 13.20, 71.00, 2.50, 0.40, 0.40, 10.70, 5.00, 0.00, NULL),
+    (311, 'Macaroni', 100.00, 371.00, 13.00, 75.00, 1.50, 0.30, 2.70, 3.20, 6.00, 0.00, NULL),
+    (312, 'Baked with cheese', 100.00, 350.00, 12.00, 35.00, 18.00, 10.00, 2.00, 1.50, 600.00, 45.00, NULL),
+    (313, 'Muffins', 100.00, 377.00, 6.50, 52.00, 16.00, 3.50, 22.00, 1.80, 450.00, 55.00, NULL),
+    (314, 'Noodles', 100.00, 384.00, 14.00, 71.00, 4.40, 2.10, 0.50, 3.30, 5.00, 0.00, NULL),
+    (315, 'Oatmeal', 100.00, 389.00, 16.90, 66.30, 6.90, 1.20, 0.00, 10.60, 2.00, 0.00, NULL),
+    (316, 'Pancakes ', 100.00, 227.00, 6.40, 28.30, 9.70, 2.10, 6.20, 1.30, 439.00, 59.00, NULL),
+    (317, 'Wheat, pancakes .', 100.00, 210.00, 7.50, 26.00, 8.20, 1.80, 5.50, 3.50, 410.00, 5.00, NULL),
+    (318, 'Pizza 14\" diam.', 100.00, 266.00, 11.40, 33.00, 9.80, 4.50, 3.60, 2.30, 598.00, 18.00, NULL),
+    (319, 'Popcorn salted', 100.00, 450.00, 9.10, 62.00, 18.00, 3.20, 0.50, 10.50, 800.00, 0.00, NULL),
+    (320, 'Puffed rice', 100.00, 402.00, 6.30, 89.80, 0.50, 0.10, 0.10, 1.70, 3.00, 0.00, NULL),
+    (321, 'Puffed wheat presweetened', 100.00, 362.00, 13.50, 80.00, 2.00, 0.40, 0.40, 10.00, 2.00, 0.00, NULL),
+    (322, 'Rice', 100.00, 130.00, 2.70, 28.00, 0.30, 0.10, 0.10, 0.40, 1.00, 0.00, NULL),
+    (323, 'Converted (Rice)', 100.00, 123.00, 2.50, 26.50, 0.30, 0.10, 0.10, 0.40, 1.00, 0.00, NULL),
+    (324, 'White (Rice)', 100.00, 130.00, 2.70, 28.20, 0.30, 0.10, 0.10, 0.40, 1.00, 0.00, NULL),
+    (325, 'Rice flakes', 100.00, 363.00, 7.00, 80.00, 1.00, 0.20, 0.50, 1.00, 3.00, 0.00, NULL),
+    (326, 'Rice polish', 100.00, 265.00, 13.40, 28.00, 13.00, 2.50, 0.90, 2.10, 5.00, 0.00, NULL),
+    (327, 'Rolls', 100.00, 290.00, 9.00, 52.00, 4.50, 1.00, 6.50, 2.40, 490.00, 0.00, NULL),
+    (328, 'of refined flour', 100.00, 364.00, 10.00, 76.00, 1.00, 0.20, 0.30, 2.70, 2.00, 0.00, NULL),
+    (329, 'whole-wheat', 100.00, 339.00, 13.00, 71.00, 2.50, 0.40, 0.40, 10.70, 5.00, 0.00, NULL),
+    (330, 'Spaghetti with meat sauce', 100.00, 158.00, 7.50, 19.00, 6.00, 2.30, 3.50, 1.80, 350.00, 18.00, NULL),
+    (331, 'with tomatoes and cheese', 100.00, 135.00, 5.50, 18.00, 4.80, 2.50, 3.00, 1.60, 410.00, 12.00, NULL),
+    (332, 'Spanish rice', 100.00, 125.00, 2.50, 21.00, 3.50, 0.60, 2.50, 1.40, 480.00, 0.00, NULL),
+    (333, 'Shredded wheat biscuit', 100.00, 348.00, 10.50, 80.00, 2.00, 0.40, 0.90, 11.50, 3.00, 0.00, NULL),
+    (334, 'Waffles', 100.00, 291.00, 7.90, 33.00, 14.00, 2.50, 8.50, 1.10, 510.00, 65.00, NULL),
+    (335, 'Wheat germ', 100.00, 360.00, 23.10, 51.80, 9.70, 1.70, 6.30, 13.20, 12.00, 0.00, NULL),
+    (336, 'Wheat-germ cereal toasted', 100.00, 382.00, 28.50, 45.00, 10.90, 1.90, 6.00, 15.60, 15.00, 0.00, NULL),
+    (337, 'Wheat meal cereal unrefined', 100.00, 339.00, 13.20, 71.00, 2.50, 0.40, 0.40, 10.70, 5.00, 0.00, NULL),
+    (338, 'Wheat (Cooked cereal)', 100.00, 71.00, 2.40, 15.30, 0.40, 0.10, 0.10, 2.30, 120.00, 0.00, NULL),
+    (339, 'Bean soups', 100.00, 68.00, 4.80, 11.50, 1.00, 0.20, 0.50, 4.50, 340.00, 0.00, NULL),
+    (340, 'Beef soup', 100.00, 35.00, 2.50, 3.50, 1.20, 0.50, 0.80, 0.30, 380.00, 6.00, NULL),
+    (341, 'Bouillon', 100.00, 4.17, 0.42, 0.50, 0.04, 0.00, 0.21, 0.00, 166.67, 0.00, NULL),
+    (342, 'chicken soup', 100.00, 14.40, 1.00, 1.52, 0.48, 0.16, 0.28, 0.08, 144.00, 2.00, NULL),
+    (343, 'Clam chowder', 100.00, 32.16, 1.57, 2.82, 1.76, 0.82, 0.59, 0.20, 149.02, 5.88, NULL),
+    (344, 'Cream soups', 100.00, 29.41, 0.59, 2.55, 1.88, 1.10, 1.18, 0.12, 137.25, 4.71, NULL),
+    (345, 'Noodle', 100.00, 18.00, 0.48, 2.48, 0.72, 0.32, 0.20, 0.16, 152.00, 2.00, NULL),
+    (346, 'Split-pea soup', 100.00, 24.00, 1.28, 4.40, 0.20, 0.04, 0.72, 0.84, 148.00, 0.00, NULL),
+    (347, 'Tomato soup', 100.00, 12.24, 0.33, 2.65, 0.08, 0.00, 1.71, 0.20, 159.18, 0.00, NULL),
+    (348, 'Vegetable soup', 100.00, 12.80, 0.44, 2.40, 0.20, 0.04, 1.00, 0.48, 144.00, 0.00, NULL),
+    (349, 'Apple betty', 100.00, 150.00, 1.00, 29.00, 4.00, 1.50, 22.00, 2.00, 77.00, 0.00, NULL),
+    (350, 'Bread pudding', 100.00, 76.50, 1.75, 12.50, 2.25, 1.10, 9.00, 0.40, 77.00, 22.50, NULL),
+    (351, 'Cakes', 100.00, 725.00, 7.50, 120.00, 25.00, 8.75, 75.00, 1.50, 787.50, 137.50, NULL),
+    (352, 'Chocolate fudge', 100.00, 341.67, 2.08, 62.50, 10.00, 6.25, 54.17, 1.25, 79.17, 8.33, NULL),
+    (353, 'Cupcake', 100.00, 610.00, 6.40, 94.00, 24.00, 7.00, 66.00, 1.00, 440.00, 80.00, NULL),
+    (354, 'Fruit cake', 100.00, 1080.00, 9.67, 203.33, 30.33, 5.00, 126.67, 11.67, 466.67, 66.67, NULL),
+    (355, 'Gingerbread', 100.00, 327.27, 3.64, 34.55, 12.73, 10.91, 26.91, 0.02, 169.09, 80.00, NULL),
+    (356, 'Cace, Plain (Sponge)', 100.00, 287.50, 7.50, 47.50, 5.00, 1.25, 37.00, 0.25, 200.00, 190.00, NULL),
+    (357, 'Sponge cake', 100.00, 287.50, 7.50, 47.50, 5.00, 5.00, 46.25, 0.00, 227.50, 0.00, NULL),
+    (358, 'Candy', 100.00, 416.00, 0.04, 76.00, 12.00, 12.00, 84.00, 0.00, 164.00, 8.00, NULL),
+    (359, 'Chocolate creams', 100.00, 433.33, 0.03, 63.33, 13.33, 13.33, 240.00, 0.00, 173.33, 53.33, NULL),
+    (360, 'Fudge', 100.00, 411.11, 0.01, 21.11, 13.33, 12.22, 29.44, 0.11, 191.11, 0.00, NULL),
+    (361, 'Hard candies', 100.00, 321.43, 0.04, 67.86, 0.00, 0.00, 62.14, 0.00, 200.00, 0.00, NULL),
+    (362, 'Marshmallows', 100.00, 326.67, 3.33, 63.33, 0.00, 0.00, 96.33, 0.00, 203.33, 43.33, NULL),
+    (363, 'Milk chocolate', 100.00, 517.86, 3.57, 33.93, 10.71, 10.71, 44.82, 0.36, 221.43, 0.00, NULL),
+    (364, 'Chocolate syrup', 100.00, 200.00, 0.03, 47.50, 0.03, 0.03, 13.75, 0.00, 110.00, 30.00, NULL),
+    (365, 'Doughnuts', 100.00, 409.09, 6.06, 57.58, 21.21, 12.12, 0.00, 0.03, 215.15, 0.00, NULL),
+    (366, 'Gelatin', 100.00, 328.57, 85.71, 271.43, 0.00, 0.00, 491.43, 0.00, 142.86, 0.00, NULL),
+    (367, 'Honey', 100.00, 285.71, 0.02, 45.24, 0.00, 0.00, 150.00, 0.00, 142.86, 314.29, NULL),
+    (368, 'Ice cream', 100.00, 83.33, 0.00, 6.33, 0.00, 4.00, 12.50, 3.33, 0.00, 0.00, NULL),
+    (369, 'Ices', 100.00, 78.00, 0.00, 12.67, 0.00, 0.00, 6.47, 0.00, 64.00, 0.00, NULL),
+    (370, 'preserves', 100.00, 275.00, 0.00, 95.00, 0.00, 0.00, 60.00, 0.05, 140.00, 0.00, NULL),
+    (371, 'Jellies', 100.00, 250.00, 0.00, 95.00, 0.00, 0.00, 75.00, 0.00, 130.00, 0.00, NULL),
+    (372, 'Molasses', 100.00, 225.00, 0.00, 95.00, 0.00, 0.00, 73.00, 40.00, 110.00, 0.00, NULL),
+    (373, 'Cane Syrup', 100.00, 250.00, 0.00, 95.00, 0.00, 0.00, 121.50, 0.00, 130.00, 0.00, NULL),
+    (374, '9\" diam. pie', 100.00, 244.44, 2.22, 14.07, 9.63, 8.15, 20.00, 0.07, 121.48, 0.00, NULL),
+    (375, 'Cherry Pie', 100.00, 251.85, 2.22, 14.07, 9.63, 8.15, 13.04, 0.07, 124.44, 86.67, NULL),
+    (376, 'Custard', 100.00, 203.85, 5.38, 14.62, 8.46, 7.69, 35.08, 0.00, 141.54, 60.00, NULL),
+    (377, 'Lemon meringue', 100.00, 250.00, 3.33, 15.83, 10.00, 8.33, 36.00, 0.08, 135.00, 16.67, NULL),
+    (378, 'Mince', 100.00, 251.85, 2.22, 14.07, 6.67, 5.93, 14.44, 0.52, 131.85, 43.70, NULL),
+    (379, 'Pumpkin Pie', 100.00, 203.85, 3.85, 14.62, 9.23, 8.46, 25.38, 6.15, 119.23, 15.38, NULL),
+    (380, 'Puddings Sugar', 100.00, 385.00, 0.00, 9.50, 0.00, 0.00, 6.00, 0.00, 199.00, 0.00, NULL),
+    (381, '3 teaspoons sugar', 100.00, 416.67, 0.00, 158.33, 0.00, 0.00, 1778.33, 0.00, 200.00, 0.00, NULL),
+    (382, 'Sugar, Brown', 100.00, 372.73, 0.00, 8.64, 0.00, 0.00, 13.64, 0.00, 27.27, 0.00, NULL),
+    (383, 'Syrup', 100.00, 250.00, 0.00, 47.50, 0.00, 0.00, 98.00, 0.00, 125.00, 0.00, NULL),
+    (384, 'table blends sugar', 100.00, 275.00, 0.00, 47.50, 0.00, 0.00, 93.75, 0.00, 145.00, 312.50, NULL),
+    (385, 'Tapioca cream pudding', 100.00, 134.00, 4.00, 7.60, 4.00, 3.60, 1.24, 0.00, 97.60, 0.00, NULL),
+    (386, 'Almonds', 100.00, 607.14, 18.57, 27.14, 54.29, 40.00, 4.14, 2.57, 370.00, 0.00, NULL),
+    (387, 'roasted and salted', 100.00, 627.14, 18.57, 27.14, 57.14, 44.29, 2.29, 2.57, 372.86, 0.00, NULL),
+    (388, 'Brazil nuts', 100.00, 652.86, 14.29, 27.14, 67.14, 44.29, 5.86, 2.86, 301.43, 0.00, NULL),
+    (389, 'Cashews', 100.00, 560.00, 17.14, 27.14, 45.71, 40.00, 31.14, 1.29, 360.00, 0.00, NULL),
+    (390, 'coconut sweetened', 100.00, 548.00, 2.00, 38.00, 40.00, 38.00, 15.60, 4.00, 174.00, 0.00, NULL),
+    (391, 'Peanut butter (Salted)', 100.00, 588.24, 24.71, 22.35, 49.41, 10.00, 9.18, 5.88, 447.06, 0.00, NULL),
+    (392, 'Peanut butter (Unsalted)', 100.00, 588.24, 24.71, 22.35, 49.41, 10.00, 2.82, 5.88, 5.88, 0.00, NULL),
+    (393, 'Peanuts', 100.00, 580.00, 26.00, 38.00, 50.00, 32.00, 4.20, 2.40, 476.00, 0.00, NULL),
+    (394, 'Pecans', 100.00, 659.62, 9.62, 36.54, 67.31, 48.08, 0.38, 2.12, 238.46, 0.00, NULL),
+    (395, 'Sesame seeds', 100.00, 560.00, 18.00, 38.00, 48.00, 26.00, 2.60, 6.20, 358.00, 0.00, NULL),
+    (396, 'Sunflower seeds', 100.00, 560.00, 24.00, 38.00, 52.00, 14.00, 2.60, 3.80, 452.00, 0.00, NULL),
+    (397, 'Walnuts', 100.00, 650.00, 14.00, 38.00, 64.00, 6.00, 1.00, 6.80, 2.00, 0.00, NULL),
+    (398, 'Beer', 100.00, 47.50, 0.00, 3.96, 0.00, 0.00, 0.00, 0.00, 3.33, 0.00, NULL),
+    (399, 'Gin', 100.00, 250.00, 0.00, 67.86, 0.00, 0.00, 2.50, 0.00, 0.00, 0.00, NULL),
+    (400, 'Wines', 100.00, 136.67, 0.01, 15.83, 0.00, 0.00, 0.58, 0.00, 15.00, 0.00, NULL),
+    (401, 'Table (12.2% alcohol)', 100.00, 83.33, 0.01, 15.83, 0.00, 0.00, 0.00, 0.00, 8.33, 0.00, NULL),
+    (402, 'Carbonated drinks Artificially sweetened', 100.00, 0.00, 0.00, 5.49, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, NULL),
+    (403, 'Club soda', 100.00, 0.00, 0.00, 5.49, 0.00, 0.00, 10.61, 0.00, 0.00, 0.00, NULL),
+    (404, 'Cola drinks', 100.00, 39.60, 0.00, 5.49, 0.00, 0.00, 12.11, 0.00, 21.97, 0.00, NULL),
+    (405, 'Fruit-flavored soda', 100.00, 46.53, 0.00, 5.49, 0.00, 0.00, 9.10, 0.00, 24.28, 0.00, NULL),
+    (406, 'Ginger ale', 100.00, 30.35, 0.00, 5.49, 0.00, 0.00, 11.01, 0.00, 16.18, 0.00, NULL),
+    (407, 'Root beer', 100.00, 40.46, 0.00, 5.49, 0.00, 0.00, 0.00, 0.00, 20.23, 0.00, NULL),
+    (408, 'Coffee', 100.00, 1.30, 0.00, 8.26, 0.00, 0.00, 0.00, 0.00, 0.87, 0.00, NULL),
+    (409, 'Tea', 100.00, 1.74, 0.00, 8.26, 0.00, 0.00, 0.00, 0.00, 0.87, 0.00, NULL);
+
+    CREATE TABLE `fooditemservingunit` (
+    `FoodItemID` int(11) NOT NULL,
+    `UnitID` int(11) NOT NULL,
+    `ToGramFact` decimal(10,2) NOT NULL,
+    PRIMARY KEY (`FoodItemID`, `UnitID`),
+    KEY `UnitID` (`UnitID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     
 
+INSERT INTO `fooditemservingunit` (`FoodItemID`, `UnitID`, `ToGramFact`) VALUES
+-- 1. Apple Pie (غرام، قطعة، شريحة)
+(1, 1, 1.00), (1, 6, 450.00), (1, 7, 125.00),
+-- 2. Baby Back Ribs (غرام، قطعة)
+(2, 1, 1.00), (2, 6, 150.00),
+-- 3. Baklava (غرام، قطعة)
+(3, 1, 1.00), (3, 6, 35.00),
+-- 4. Beef Carpaccio (غرام، قطعة/حصيرة)
+(4, 1, 1.00), (4, 6, 80.00),
+-- 5. Beef Tartare (غرام، كوب، قطعة/كرة)
+(5, 1, 1.00), (5, 3, 150.00), (5, 6, 100.00),
+-- 6. Beet Salad (غرام، كوب، ملعقة كبيرة)
+(6, 1, 1.00), (6, 3, 120.00), (6, 4, 15.00),
+-- 7. Beignets (غرام، قطعة)
+(7, 1, 1.00), (7, 6, 40.00),
+-- 8. Bibimbap (غرام، كوب، قطعة/وجبة)
+(8, 1, 1.00), (8, 3, 300.00), (8, 6, 400.00),
+-- 9. Bread Pudding (غرام، كوب، قطعة)
+(9, 1, 1.00), (9, 3, 150.00), (9, 6, 120.00),
+-- 10. Breakfast Burrito (غرام، قطعة)
+(10, 1, 1.00), (10, 6, 180.00),
+-- 11. Bruschetta (غرام، قطعة)
+(11, 1, 1.00), (11, 6, 45.00),
+-- 12. Caesar Salad (غرام، كوب)
+(12, 1, 1.00), (12, 3, 70.00),
+-- 13. Cannoli (غرام، قطعة)
+(13, 1, 1.00), (13, 6, 45.00),
+-- 14. Caprese Salad (غرام، كوب، قطعة)
+(14, 1, 1.00), (14, 3, 150.00), (14, 6, 150.00),
+-- 15. Carrot Cake (غرام، قطعة، شريحة)
+(15, 1, 1.00), (15, 6, 400.00), (15, 7, 110.00),
+-- 16. Ceviche (غرام، كوب، ملعقة كبيرة)
+(16, 1, 1.00), (16, 3, 150.00), (16, 4, 18.00),
+-- 17. Cheesecake (غرام، قطعة، شريحة)
+(17, 1, 1.00), (17, 6, 500.00), (17, 7, 125.00),
+-- 18. Cheese Plate (غرام، قطعة، شريحة)
+(18, 1, 1.00), (18, 6, 100.00), (18, 7, 20.00),
+-- 19. Chicken Curry (غرام، كوب، ملعقة كبيرة)
+(19, 1, 1.00), (19, 3, 240.00), (19, 4, 16.00),
+-- 20. Chicken Quesadilla (غرام، قطعة، شريحة/مثلث)
+(20, 1, 1.00), (20, 6, 180.00), (20, 7, 45.00),
+-- 21. Chicken Wings (غرام، قطعة)
+(21, 1, 1.00), (21, 6, 30.00),
+-- 22. Chocolate Cake (غرام، قطعة، شريحة)
+(22, 1, 1.00), (22, 6, 450.00), (22, 7, 110.00),
+-- 23. Chocolate Mousse (غرام.. كوب.. ملعقة كبيرة)
+(23, 1, 1.00), (23, 3, 110.00), (23, 4, 15.00),
+-- 24. Churros (غرام، قطعة)
+(24, 1, 1.00), (24, 6, 25.00),
+-- 25. Clam Chowder (غرام، كوب، ملعقة كبيرة)
+(25, 1, 1.00), (25, 3, 240.00), (25, 4, 15.00),
+-- 26. Club Sandwich (غرام، قطعة)
+(26, 1, 1.00), (26, 6, 250.00),
+-- 27. Crab Cakes (غرام، قطعة)
+(27, 1, 1.00), (27, 6, 60.00),
+-- 28. Creme Brulee (غرام، قطعة/قالب)
+(28, 1, 1.00), (28, 6, 130.00),
+-- 29. Croque Madame (غرام، قطعة)
+(29, 1, 1.00), (29, 6, 200.00),
+-- 30. Cup Cakes (غرام، قطعة)
+(30, 1, 1.00), (30, 6, 60.00),
+-- 31. Deviled Eggs (غرام، قطعة)
+(31, 1, 1.00), (31, 6, 30.00),
+-- 32. Donuts (غرام، قطعة)
+(32, 1, 1.00), (32, 6, 50.00),
+-- 33. Dumplings (غرام، قطعة)
+(33, 1, 1.00), (33, 6, 25.00),
+-- 34. Edamame (غرام، كوب)
+(34, 1, 1.00), (34, 3, 120.00),
+-- 35. Eggs Benedict (غرام، قطعة/حصيرة)
+(35, 1, 1.00), (35, 6, 150.00),
+-- 36. Escargots (غرام، قطعة)
+(36, 1, 1.00), (36, 6, 15.00),
+-- 37. Falafel (غرام، قطعة)
+(37, 1, 1.00), (37, 6, 17.00),
+-- 38. Filet Mignon (غرام، قطعة)
+(38, 1, 1.00), (38, 6, 170.00),
+-- 39. Fish and Chips (غرام، قطعة/وجبة)
+(39, 1, 1.00), (39, 6, 350.00),
+-- 40. Foie Gras (غرام، قطعة، شريحة)
+(40, 1, 1.00), (40, 6, 50.00), (40, 7, 30.00),
+-- 41. French Fries (غرام، كوب، قطعة)
+(41, 1, 1.00), (41, 3, 85.00), (41, 6, 5.00),
+-- 42. French Onion Soup (غرام، كوب، ملعقة كبيرة)
+(42, 1, 1.00), (42, 3, 240.00), (42, 4, 15.00),
+-- 43. French Toast (غرام، شريحة، قطعة)
+(43, 1, 1.00), (43, 6, 130.00), (43, 7, 65.00),
+-- 44. Fried Calamari (غرام، كوب، قطعة)
+(44, 1, 1.00), (44, 3, 100.00), (44, 6, 15.00),
+-- 45. Fried Rice (غرام، كوب، ملعقة كبيرة)
+(45, 1, 1.00), (45, 3, 160.00), (45, 4, 15.00),
+-- 46. Frozen Yogurt (غرام، كوب، ملعقة كبيرة)
+(46, 1, 1.00), (46, 3, 170.00), (46, 4, 15.00),
+-- 47. Garlic Bread (غرام، شريحة، قطعة)
+(47, 1, 1.00), (47, 6, 40.00), (47, 7, 40.00),
+-- 48. Greek Salad (غرام، كوب)
+(48, 1, 1.00), (48, 3, 150.00),
+-- 49. Grilled Cheese Sandwich (غرام، قطعة)
+(49, 1, 1.00), (49, 6, 120.00),
+-- 50. Hamburger (غرام، قطعة)
+(50, 1, 1.00), (50, 6, 200.00),
+-- 51. Guacamole (غرام، كوب، ملعقة كبيرة، ملعقة صغيرة)
+(51, 1, 1.00), (51, 3, 230.00), (51, 4, 15.00), (51, 5, 5.00),
+-- 52. Gyoza (غرام، قطعة)
+(52, 1, 1.00), (52, 6, 25.00),
+-- 53. Hamburger [مكرر في السكربت] (غرام، قطعة)
+(53, 1, 1.00), (53, 6, 200.00),
+-- 54. Hot and Sour Soup (غرام، كوب، ملعقة كبيرة)
+(54, 1, 1.00), (54, 3, 240.00), (54, 4, 15.00),
+-- 55. Hot Dog (غرام، قطعة)
+(55, 1, 1.00), (55, 6, 100.00),
+-- 56. Hummus (غرام، كوب، ملعقة كبيرة، ملعقة صغيرة)
+(56, 1, 1.00), (56, 3, 240.00), (56, 4, 15.00), (56, 5, 5.00),
+-- 57. Ice Cream (غرام، كوب، ملعقة كبيرة، قطعة/بولا)
+(57, 1, 1.00), (57, 3, 140.00), (57, 4, 15.00), (57, 6, 70.00),
+-- 58. Lasagna (غرام، قطعة/مربع)
+(58, 1, 1.00), (58, 6, 250.00),
+-- 59. Lobster Bisque (غرام، كوب، ملعقة كبيرة)
+(59, 1, 1.00), (59, 3, 240.00), (59, 4, 15.00),
+-- 60. Lobster Roll Sandwich (غرام، قطعة)
+(60, 1, 1.00), (60, 6, 170.00),
+-- 61. Macaroni and Cheese (غرام، كوب، ملعقة كبيرة)
+(61, 1, 1.00), (61, 3, 200.00), (61, 4, 16.00),
+-- 62. Macarons (غرام، قطعة)
+(62, 1, 1.00), (62, 6, 12.00),
+-- 63. Miso Soup (غرام، كوب، ملعقة كبيرة)
+(63, 1, 1.00), (63, 3, 240.00), (63, 4, 15.00),
+-- 64. Mussels (غرام، قطعة)
+(64, 1, 1.00), (64, 6, 15.00),
+-- 65. Nachos (غرام، قطعة، كوب)
+(65, 1, 1.00), (65, 3, 100.00), (65, 6, 15.00),
+-- 66. Omelette (غرام، قطعة)
+(66, 1, 1.00), (66, 6, 120.00),
+-- 67. Onion Rings (غرام، قطعة)
+(67, 1, 1.00), (67, 6, 15.00),
+-- 68. Oysters (غرام، قطعة)
+(68, 1, 1.00), (68, 6, 20.00),
+-- 69. Pad Thai (غرام، كوب)
+(69, 1, 1.00), (69, 3, 200.00),
+-- 70. Paella (غرام، كوب)
+(70, 1, 1.00), (70, 3, 200.00),
+-- 71. Pancakes (غرام، قطعة)
+(71, 1, 1.00), (71, 6, 45.00),
+-- 72. Panna Cotta (غرام، قطعة/قالب)
+(72, 1, 1.00), (72, 6, 120.00),
+-- 73. Pasta Carbonara (غرام، كوب)
+(73, 1, 1.00), (73, 3, 200.00),
+-- 74. Pea Soup (غرام، كوب، ملعقة كبيرة)
+(74, 1, 1.00), (74, 3, 240.00), (74, 4, 15.00),
+-- 75. Peking Duck (غرام، قطعة، شريحة)
+(75, 1, 1.00), (75, 6, 150.00), (75, 7, 40.00),
+-- 76. Pho (غرام، كوب)
+(76, 1, 1.00), (76, 3, 350.00),
+-- 77. Pizza (غرام، قطعة كاملة، شريحة)
+(77, 1, 1.00), (77, 6, 600.00), (77, 7, 100.00),
+-- 78. Pork Chop (غرام، قطعة)
+(78, 1, 1.00), (78, 6, 150.00),
+-- 79. Prime Rib (غرام، قطعة، شريحة)
+(79, 1, 1.00), (79, 6, 250.00), (79, 7, 200.00),
+-- 80. Pulled Pork Sandwich (غرام، قطعة)
+(80, 1, 1.00), (80, 6, 220.00),
+-- 81. Ramen (غرام، كوب)
+(81, 1, 1.00), (81, 3, 350.00),
+-- 82. Ravioli (غرام، قطعة، كوب)
+(82, 1, 1.00), (82, 3, 150.00), (82, 6, 15.00),
+-- 83. Red Velvet Cake (غرام، قطعة، شريحة)
+(83, 1, 1.00), (83, 6, 450.00), (83, 7, 110.00),
+-- 84. Risotto (غرام، كوب، ملعقة كبيرة)
+(84, 1, 1.00), (84, 3, 170.00), (84, 4, 15.00),
+-- 85. Samosa (غرام، قطعة)
+(85, 1, 1.00), (85, 6, 40.00),
+-- 86. Sashimi (غرام، قطعة، شريحة)
+(86, 1, 1.00), (86, 6, 20.00), (86, 7, 20.00),
+-- 87. Scallops (غرام، قطعة)
+(87, 1, 1.00), (87, 6, 25.00),
+-- 88. Seaweed Salad (غرام، كوب، ملعقة كبيرة)
+(88, 1, 1.00), (88, 3, 100.00), (88, 4, 15.00),
+-- 89. Shrimp and Grits (غرام، كوب)
+(89, 1, 1.00), (89, 3, 250.00),
+-- 90. Spaghetti Bolognese (غرام، كوب)
+(90, 1, 1.00), (90, 3, 220.00),
+-- 91. Spaghetti Carbonara (غرام، كوب)
+(91, 1, 1.00), (91, 3, 220.00),
+-- 92. Spring Rolls (غرام، قطعة)
+(92, 1, 1.00), (92, 6, 40.00),
+-- 93. Steak (غرام، قطعة)
+(93, 1, 1.00), (93, 6, 200.00),
+-- 94. Strawberry Shortcake (غرام، قطعة، شريحة)
+(94, 1, 1.00), (94, 6, 150.00), (94, 7, 120.00),
+-- 95. Sushi (غرام، قطعة)
+(95, 1, 1.00), (95, 6, 30.00),
+-- 96. Tacos (غرام، قطعة)
+(96, 1, 1.00), (96, 6, 75.00),
+-- 97. Takoyaki (غرام، قطعة)
+(97, 1, 1.00), (97, 6, 30.00),
+-- 98. Tiramisu (غرام، قطعة، شريحة)
+(98, 1, 1.00), (98, 6, 150.00), (98, 7, 100.00),
+-- 99. Tuna Tartare (غرام، كوب، قطعة)
+(99, 1, 1.00), (99, 3, 140.00), (99, 6, 100.00),
+-- 100. Waffles (غرام، قطعة)
+(100, 1, 1.00), (100, 6, 75.00),
+-- 101. Yakisoba (غرام، كوب)
+(101, 1, 1.00), (101, 3, 200.00)
+ON DUPLICATE KEY UPDATE ToGramFact = VALUES(ToGramFact);
 
-CREATE TABLE Contains (
-    MealID INT NOT NULL,
-    FoodItemID INT NOT NULL,
-    Quantity FLOAT NOT NULL,
-    TotalCalories FLOAT NOT NULL,
-    Name VARCHAR(100) NOT NULL,
-    PRIMARY KEY (MealID, FoodItemID),
-    FOREIGN KEY (MealID) REFERENCES Meal(MealID),
-    FOREIGN KEY (FoodItemID) REFERENCES FoodItem(FoodItemID)
-);
 
-CREATE TABLE Image (
-    ImageID INT PRIMARY KEY AUTO_INCREMENT,
-    MealID INT NOT NULL,
-    UploadTime DATETIME NOT NULL,
-    AnalysisResult TEXT NOT NULL,
-    ModelID INT NOT NULL,
-    FOREIGN KEY (MealID) REFERENCES Meal(MealID)
-);
+INSERT INTO fooditemservingunit (FoodItemID, UnitID, ToGramFact) VALUES
+-- 102. Bakhmari | باخمري (غرام، قطعة متوسطة)
+(102, 1, 1.00), (102, 6, 45.00),
+-- 103. Barwata | برواطه (غرام، قطعة، شريحة)
+(103, 1, 1.00), (103, 6, 80.00), (103, 7, 80.00),
+-- 104. Lakham soup | صانة لخم (غرام، كوب، ملعقة كبيرة)
+(104, 1, 1.00), (104, 3, 240.00), (104, 4, 15.00),
+-- من 105 إلى 131: منتجات الألبان والبيض (Dairy products & Eggs) الأنسب لها الكوب، الملعقة، أو القطعة/البيضة
+(105, 1, 1.00), (105, 3, 244.00), -- Cows' milk
+(106, 1, 1.00), (106, 3, 245.00), -- Skim milk
+(107, 1, 1.00), (107, 3, 245.00), -- Buttermilk
+(108, 1, 1.00), (108, 3, 250.00), (108, 4, 15.00), -- Evaporated milk
+(109, 1, 1.00), (109, 3, 244.00), -- Fortified Whole milk
+(110, 1, 1.00), (110, 3, 120.00), (110, 4, 7.00),  -- Powdered milk
+(111, 1, 1.00), (111, 3, 245.00), -- skim Milk(Non-fat)
+(112, 1, 1.00), (112, 3, 120.00), -- skim Milk Powder
+(113, 1, 1.00), (113, 3, 244.00), -- Goats' milk
+(114, 1, 1.00), (114, 3, 140.00), (114, 6, 75.00),  -- Ice cream (Vanilla)
+(115, 1, 1.00), (115, 3, 250.00), -- Cocoa
+(116, 1, 1.00), (116, 3, 245.00), -- skim. milk
+(117, 1, 1.00), (117, 4, 8.00),   -- cornstarch
+(118, 1, 1.00), (118, 3, 140.00), -- Custard
+(119, 1, 1.00), (119, 3, 140.00), -- Ice cream
+(120, 1, 1.00), (120, 3, 140.00), -- Ice milk
+(121, 1, 1.00), (121, 3, 240.00), (121, 4, 15.00), -- Cream or half-and-half
+(122, 1, 1.00), (122, 3, 120.00), (122, 4, 15.00), -- Whipping Cream
+(123, 1, 1.00), (123, 3, 225.00), -- Cottage Cheese
+(124, 1, 1.00), (124, 6, 28.00),  -- Cheddar Cheese cube
+(125, 1, 1.00), (125, 3, 113.00), -- Cheddar Cheese shredded
+(126, 1, 1.00), (126, 4, 14.50),  -- Cream cheese
+(127, 1, 1.00), (127, 6, 21.00),  -- Processed cheese
+(128, 1, 1.00), (128, 6, 30.00),  -- Roquefort type
+(129, 1, 1.00), (129, 6, 28.00),  -- Swiss
+(130, 1, 1.00), (130, 6, 50.00),  -- Eggs, raw (بيضة كاملة متوسطة)
+(131, 1, 1.00), (131, 6, 60.00),  -- Eggs Scrambled or fried
+-- من 132 إلى 145: الزيوت والدهون (Fats & Oils) والصلصات الأنسب لها ملعقة كبيرة وملعقة صغيرة وكوب
+(132, 1, 1.00), (132, 5, 5.00),   -- Yolks
+(133, 1, 1.00), (133, 4, 14.00),  -- Butter Unsalted (1 T.)
+(134, 1, 1.00), (134, 4, 14.00),  -- Butter Salted (1 T.)
+(135, 1, 1.00), (135, 4, 14.00), (135, 5, 5.00), -- Butter Salted
+(136, 1, 1.00), (136, 4, 14.00), (136, 5, 5.00), -- Butter Unsalted
+(137, 1, 1.00), (137, 4, 13.00),  -- Hydrogenated cooking fat
+(138, 1, 1.00), (138, 4, 13.00),  -- Lard
+(139, 1, 1.00), (139, 4, 14.00),  -- Margarine
+(140, 1, 1.00), (140, 4, 14.00),  -- Mayonnaise
+(141, 1, 1.00), (141, 4, 14.00),  -- Corn oil
+(142, 1, 1.00), (142, 4, 14.00),  -- Olive oil
+(143, 1, 1.00), (143, 4, 14.00),  -- Safflower seed oil
+(144, 1, 1.00), (144, 4, 15.00),  -- French dressing
+(145, 1, 1.00), (145, 4, 16.00),  -- Thousand Island sauce
+-- من 146 إلى 165: اللحوم والدواجن (Meat & Poultry) الأنسب لها غرام، قطعة، شريحة
+(146, 1, 1.00), (146, 7, 20.00),  -- Bacon
+(147, 1, 1.00), (147, 7, 85.00),  -- Beef, Roast
+(148, 1, 1.00), (148, 6, 150.00), -- Hamburger
+(149, 1, 1.00), (149, 3, 150.00), -- Ground lean
+(150, 1, 1.00), (150, 7, 85.00),  -- Roast beef
+(151, 1, 1.00), (151, 6, 200.00), -- Steak
+(152, 1, 1.00), (152, 3, 220.00), -- Corned beef
+(153, 1, 1.00), (153, 3, 220.00), -- Corned beef hash canned
+(154, 1, 1.00), (154, 3, 200.00), -- Corned beef hash Dried
+(155, 1, 1.00), (155, 6, 230.00), -- Beef Pot-pie
+(156, 1, 1.00), (156, 3, 240.00), -- Corned beef hash Stew
+(157, 1, 1.00), (157, 6, 120.00), -- Fried chicken
+(158, 1, 1.00), (158, 6, 100.00), -- Roasted chicken
+(159, 1, 1.00), (159, 6, 30.00),  -- Chicken livers
+(160, 1, 1.00), (160, 7, 85.00),  -- Duck
+(161, 1, 1.00), (161, 7, 85.00),  -- Lamp, Roast
+(162, 1, 1.00), (162, 6, 200.00), -- Lamp, Leg roasted
+(163, 1, 1.00), (163, 7, 85.00),  -- Turkey
+(164, 1, 1.00), (164, 6, 150.00), -- Veal
+(165, 1, 1.00), (165, 7, 85.00),  -- Roast
+-- من 166 إلى 184: الأسماك والمأكولات البحرية (Fish & Seafood)
+(166, 1, 1.00), (166, 6, 20.00),  -- Clams
+(167, 1, 1.00), (167, 6, 150.00), -- Cod
+(168, 1, 1.00), (168, 3, 150.00), -- Crab meat
+(169, 1, 1.00), (169, 6, 30.00),  -- Fish sticks fried
+(170, 1, 1.00), (170, 6, 150.00), -- Flounder
+(171, 1, 1.00), (171, 6, 150.00), -- Haddock
+(172, 1, 1.00), (172, 6, 170.00), -- Halibut
+(173, 1, 1.00), (173, 6, 100.00), -- Herring
+(174, 1, 1.00), (174, 6, 150.00), -- Lobster
+(175, 1, 1.00), (175, 3, 200.00), -- Mackerel
+(176, 1, 1.00), (176, 6, 20.00),  -- Oysters
+(177, 1, 1.00), (177, 3, 240.00), -- Oyster stew
+(178, 1, 1.00), (178, 6, 150.00), -- Salmon
+(179, 1, 1.00), (179, 6, 25.00),  -- Sardines
+(180, 1, 1.00), (180, 6, 25.00),  -- Scallops
+(181, 1, 1.00), (181, 6, 150.00), -- Shad
+(182, 1, 1.00), (182, 6, 15.00),  -- Shrimp
+(183, 1, 1.00), (183, 6, 150.00), -- Swordfish
+(184, 1, 1.00), (184, 3, 170.00), -- Tuna (Canned)
+-- من 185 إلى 246: الخضروات والصلصات (Vegetables) الأنسب لها كوب أو ملعقة أو قطعة
+(185, 1, 1.00), (185, 6, 100.00), -- Artichoke
+(186, 1, 1.00), (186, 3, 150.00), -- Asparagus
+(187, 1, 1.00), (187, 3, 200.00), -- Beans
+(188, 1, 1.00), (188, 3, 190.00), -- Lima Beans
+(189, 1, 1.00), (189, 3, 200.00), -- Navy Beans
+(190, 1, 1.00), (190, 3, 200.00), -- Red kidney
+(191, 1, 1.00), (191, 3, 100.00), -- Bean sprouts
+(192, 1, 1.00), (192, 3, 150.00), -- Beet greens
+(193, 1, 1.00), (193, 3, 170.00), -- Beetroots
+(194, 1, 1.00), (194, 3, 150.00), -- Broccoli
+(195, 1, 1.00), (195, 3, 150.00), -- Brussels sprouts
+(196, 1, 1.00), (196, 3, 150.00), -- Sauerkraut
+(197, 1, 1.00), (197, 3, 150.00), -- Steamed cabbage
+(198, 1, 1.00), (198, 3, 110.00), -- Carrots
+(199, 1, 1.00), (199, 3, 120.00), -- Cauliflower
+(200, 1, 1.00), (200, 3, 100.00), -- Celery
+(201, 1, 1.00), (201, 6, 40.00),  -- Stalk raw
+(202, 1, 1.00), (202, 3, 150.00), -- Chard steamed
+(203, 1, 1.00), (203, 3, 150.00), -- Collards
+(204, 1, 1.00), (204, 6, 100.00), -- Corn (On the cobe)
+(205, 1, 1.00), (205, 3, 200.00), -- Corn cooked
+(206, 1, 1.00), (206, 6, 100.00), -- Cucumbers
+(207, 1, 1.00), (207, 3, 150.00), -- Dandelion greens
+(208, 1, 1.00), (208, 6, 200.00), -- Eggplant
+(209, 1, 1.00), (209, 3, 50.00),  -- Endive
+(210, 1, 1.00), (210, 3, 150.00), -- Kale
+(211, 1, 1.00), (211, 3, 150.00), -- Kohlrabi
+(212, 1, 1.00), (212, 3, 150.00), -- Lambsquarters
+(213, 1, 1.00), (213, 3, 200.00), -- Lentils
+(214, 1, 1.00), (214, 3, 50.00),  -- Lettuce
+(215, 1, 1.00), (215, 3, 50.00),  -- Iceberg
+(216, 1, 1.00), (216, 3, 150.00), -- Mushrooms canned
+(217, 1, 1.00), (217, 3, 150.00), -- Mustard greens
+(218, 1, 1.00), (218, 3, 100.00), -- Okra
+(219, 1, 1.00), (219, 6, 110.00), -- Onions
+(220, 1, 1.00), (220, 4, 4.00),   -- Raw, Parsley
+(221, 1, 1.00), (221, 3, 150.00), -- Parsnips
+(222, 1, 1.00), (222, 3, 150.00), -- Peas
+(223, 1, 1.00), (223, 3, 150.00), -- Peas, Frozen
+(224, 1, 1.00), (224, 3, 200.00), -- Split cooked peas
+(225, 1, 1.00), (225, 3, 150.00), -- heated peas
+(226, 1, 1.00), (226, 3, 150.00), -- Peppers canned
+(227, 1, 1.00), (227, 3, 250.00), -- Peppers with beef
+(228, 1, 1.00), (228, 3, 100.00), -- French-fried
+(229, 1, 1.00), (229, 3, 240.00), -- Potatoes Mashed
+(230, 1, 1.00), (230, 6, 150.00), -- Potatoes (Boiled)
+(231, 1, 1.00), (231, 3, 245.00), -- Scalloped potatoes
+(232, 1, 1.00), (232, 6, 150.00), -- Steamed potatoes
+(233, 1, 1.00), (233, 3, 30.00),  -- Potato chips
+(234, 1, 1.00), (234, 6, 15.00),  -- Radishes
+(235, 1, 1.00), (235, 3, 170.00), -- Rutabagas
+(236, 1, 1.00), (236, 3, 200.00), -- Soybeans
+(237, 1, 1.00), (237, 3, 150.00), -- Spinach
+(238, 1, 1.00), (238, 3, 200.00), -- Squash
+(239, 1, 1.00), (239, 6, 150.00), -- Sweet potatoes
+(240, 1, 1.00), (240, 3, 200.00), -- Candied
+(241, 1, 1.00), (241, 6, 120.00), -- Tomatoes, Raw
+(242, 1, 1.00), (242, 3, 240.00), -- Tomato juice
+(243, 1, 1.00), (243, 4, 16.00),  -- Tomato catsup
+(244, 1, 1.00), (244, 3, 150.00), -- Turnip greens
+(245, 1, 1.00), (245, 3, 155.00), -- Turnips
+(246, 1, 1.00), (246, 3, 50.00),  -- Watercress
+(247, 1, 1.00), (247, 3, 240.00), -- Apple juice canned
+(248, 1, 1.00), (248, 4, 15.00),  -- Apple vinegar
+(249, 1, 1.00), (249, 6, 182.00), -- Apple (Fresh)
+(250, 1, 1.00), (250, 3, 240.00), -- Stewed or canned
+-- 251. Tuna Bechamel pasta | مكرونة بشاميل بالتونة (غرام، كوب، قطعة)
+(251, 1, 1.00), (251, 3, 250.00), (251, 6, 220.00),
+-- من 252 إلى 296: الفواكه (Fruits) الأنسب لها قطعة، كوب، أو شريحة
+(252, 1, 1.00), (252, 3, 240.00), -- Apricots (Canned)
+(253, 1, 1.00), (253, 3, 130.00), -- Apricots, Dried
+(254, 1, 1.00), (254, 6, 35.00),  -- Apricots, Fresh
+(255, 1, 1.00), (255, 6, 140.00), -- Nectarine
+(256, 1, 1.00), (256, 6, 150.00), -- Avocado
+(257, 1, 1.00), (257, 6, 120.00), -- Banana
+(258, 1, 1.00), (258, 3, 144.00), -- Blackberries
+(259, 1, 1.00), (259, 3, 150.00), -- Blueberries
+(260, 1, 1.00), (260, 6, 550.00), (260, 7, 30.00), -- Cantaloupe
+(261, 1, 1.00), (261, 3, 140.00), -- Cherries, Fresh
+(262, 1, 1.00), (262, 4, 18.00),  -- Cranberry sauce
+(263, 1, 1.00), (263, 6, 8.00),   -- Dates (التمر بالقطعة)
+(264, 1, 1.00), (264, 6, 50.00),  -- Figs, Fresh
+(265, 1, 1.00), (265, 3, 250.00), -- figs Canned
+(266, 1, 1.00), (266, 3, 250.00), -- Fruit cocktail
+(267, 1, 1.00), (267, 3, 230.00), -- Grapefruit sections
+(268, 1, 1.00), (268, 6, 240.00), -- Grapefruit, fresh
+(269, 1, 1.00), (269, 3, 240.00), -- Grapefruit juice
+(270, 1, 1.00), (270, 4, 15.00),  -- Lemon juice
+(271, 1, 1.00), (271, 3, 240.00), -- Lemonade
+(272, 1, 1.00), (272, 3, 240.00), -- Limeade
+(273, 1, 1.00), (273, 6, 4.40),   -- Olives large
+(274, 1, 1.00), (274, 6, 4.40),   -- OlivesRipe
+(275, 1, 1.00), (275, 6, 130.00), -- Oranges
+(276, 1, 1.00), (276, 3, 240.00), -- Orange juice
+(277, 1, 1.00), (277, 3, 240.00), -- Frozen orange juice
+(278, 1, 1.00), (278, 6, 300.00), -- Papaya
+(279, 1, 1.00), (279, 6, 150.00), -- Peaches
+(280, 1, 1.00), (280, 6, 160.00), -- Pears
+(281, 1, 1.00), (281, 6, 160.00), -- Persimmons
+(282, 1, 1.00), (282, 6, 900.00), -- Pineapple
+(283, 1, 1.00), (283, 3, 250.00), -- Pineapple Crushed
+(284, 1, 1.00), (284, 3, 165.00), -- Pineapple, Raw
+(285, 1, 1.00), (285, 3, 245.00), -- Pineapple juice
+(286, 1, 1.00), (286, 6, 65.00),  -- Plums, Raw
+(287, 1, 1.00), (287, 6, 10.00),  -- Prunes
+(288, 1, 1.00), (288, 3, 240.00), -- Prune juice
+(289, 1, 1.00), (289, 3, 145.00), -- Raisins
+(290, 1, 1.00), (290, 3, 125.00), -- Raspberries, Raw
+(291, 1, 1.00), (291, 3, 250.00), -- Rhubarb sweetened
+(292, 1, 1.00), (292, 3, 144.00), -- Strawberries, Raw
+(293, 1, 1.00), (293, 6, 84.00),  -- Tangerines
+(294, 1, 1.00), (294, 7, 350.00), -- Watermelon
+-- من 295 إلى 338: المخبوزات والحبوب (Breads, Cereals & Grains) الأنسب لها قطعة، شريحة، أو كوب
+(295, 1, 1.00), (295, 6, 30.00),  -- Biscuits
+(296, 1, 1.00), (296, 7, 25.00),  -- Bread, White
+(297, 1, 1.00), (297, 7, 32.00),  -- Rye Bread
+(298, 1, 1.00), (298, 7, 28.00),  -- Whole-Wheat Bread
+(299, 1, 1.00), (299, 6, 60.00),  -- Cornbread
+(300, 1, 1.00), (300, 3, 28.00),  -- Cornflakes
+(301, 1, 1.00), (301, 3, 240.00), -- Corn grits cooked
+(302, 1, 1.00), (302, 3, 120.00), -- Corn meal
+(303, 1, 1.00), (303, 6, 3.00),   -- Crackers
+(304, 1, 1.00), (304, 3, 240.00), -- Soda (Cola)
+(305, 1, 1.00), (305, 3, 240.00), -- Farina
+(306, 1, 1.00), (306, 3, 125.00), -- Flour
+(307, 1, 1.00), (307, 3, 125.00), -- Wheat (all purpose)
+(308, 1, 1.00), (308, 3, 120.00), -- Wheat (whole)
+(309, 1, 1.00), (309, 3, 140.00), -- Macaroni
+(310, 1, 1.00), (310, 3, 200.00), -- Baked with cheese
+(311, 1, 1.00), (311, 6, 45.00),  -- Muffins
+(312, 1, 1.00), (312, 3, 140.00), -- Noodles
+(313, 1, 1.00), (313, 3, 240.00), -- Oatmeal
+(314, 1, 1.00), (314, 6, 45.00),  -- Pancakes
+(315, 1, 1.00), (315, 6, 45.00),  -- Wheat, pancakes
+(316, 1, 1.00), (316, 7, 100.00), -- Pizza 14" diam.
+(317, 1, 1.00), (317, 3, 10.00),  -- Popcorn salted
+(318, 1, 1.00), (318, 3, 15.00),  -- Puffed rice
+(319, 1, 1.00), (319, 3, 15.00),  -- Puffed wheat
+(320, 1, 1.00), (320, 3, 195.00), -- Rice
+(321, 1, 1.00), (321, 3, 195.00), -- Converted (Rice)
+(322, 1, 1.00), (322, 3, 195.00), -- White (Rice)
+(323, 1, 1.00), (323, 3, 30.00),  -- Rice flakes
+(324, 1, 1.00), (324, 3, 100.00), -- Rice polish
+(325, 1, 1.00), (325, 6, 40.00),  -- Rolls
+(326, 1, 1.00), (326, 3, 125.00), -- of refined flour
+(327, 1, 1.00), (327, 3, 120.00), -- whole-wheat
+(328, 1, 1.00), (328, 3, 250.00), -- Spaghetti with meat
+(329, 1, 1.00), (329, 3, 240.00), -- with tomatoes and cheese
+(330, 1, 1.00), (330, 3, 200.00), -- Spanish rice
+(331, 1, 1.00), (331, 6, 25.00),  -- Shredded wheat biscuit
+(332, 1, 1.00), (332, 6, 75.00),  -- Waffles
+(333, 1, 1.00), (333, 3, 115.00), -- Wheat germ
+(334, 1, 1.00), (334, 3, 100.00), -- Wheat-germ cereal
+(335, 1, 1.00), (335, 3, 240.00), -- Wheat meal cereal
+(336, 1, 1.00), (336, 3, 240.00), -- Wheat (Cooked cereal)
+-- من 337 إلى 346: الشوربات والمقادير السائلة (Soups) الأنسب لها كوب وملعقة كبيرة
+(337, 1, 1.00), (337, 3, 245.00), (337, 4, 15.00), -- Bean soups
+(338, 1, 1.00), (338, 3, 245.00), (338, 4, 15.00), -- Beef soup
+(339, 1, 1.00), (339, 3, 240.00), -- Bouillon
+(340, 1, 1.00), (340, 3, 245.00), (340, 4, 15.00), -- chicken soup
+(341, 1, 1.00), (341, 3, 245.00), -- Clam chowder
+(342, 1, 1.00), (342, 3, 245.00), -- Cream soups
+(343, 1, 1.00), (343, 3, 245.00), -- Noodle
+(344, 1, 1.00), (344, 3, 245.00), -- Split-pea soup
+(345, 1, 1.00), (345, 3, 245.00), -- Tomato soup
+(346, 1, 1.00), (346, 3, 245.00), -- Vegetable soup
+-- من 347 إلى 383: الحلويات والمربيات والسكر (Desserts & Jams) قطعة، شريحة، كوب، ملعقة كبيرة/صغيرة
+(347, 1, 1.00), (347, 3, 200.00), -- Apple betty
+(348, 1, 1.00), (348, 3, 250.00), -- Bread pudding
+(349, 1, 1.00), (349, 7, 80.00),  -- Cakes
+(350, 1, 1.00), (350, 6, 20.00),  -- Chocolate fudge
+(351, 1, 1.00), (351, 6, 50.00),  -- Cupcake
+(352, 1, 1.00), (352, 7, 80.00),  -- Fruit cake
+(353, 1, 1.00), (353, 6, 70.00),  -- Gingerbread
+(354, 1, 1.00), (354, 7, 50.00),  -- Cace, Plain
+(355, 1, 1.00), (355, 7, 50.00),  -- Sponge cake
+(356, 1, 1.00), (356, 6, 15.00),  -- Candy
+(357, 1, 1.00), (357, 6, 11.00),  -- Chocolate creams
+(358, 1, 1.00), (358, 6, 20.00),  -- Fudge
+(359, 1, 1.00), (359, 6, 5.00),   -- Hard candies
+(360, 1, 1.00), (360, 6, 7.00),   -- Marshmallows
+(361, 1, 1.00), (361, 6, 45.00),  -- Milk chocolate
+(362, 1, 1.00), (362, 4, 16.00),  -- Chocolate syrup
+(363, 1, 1.00), (363, 6, 50.00),  -- Doughnuts
+(364, 1, 1.00), (364, 3, 240.00), -- Gelatin
+(365, 1, 1.00), (365, 4, 21.00), (365, 5, 7.00), -- Honey
+(366, 1, 1.00), (366, 3, 140.00), -- Ice cream
+(367, 1, 1.00), (367, 3, 140.00), -- Ices
+(368, 1, 1.00), (368, 4, 20.00),  -- preserves
+(369, 1, 1.00), (369, 4, 20.00),  -- Jellies
+(370, 1, 1.00), (370, 4, 20.00),  -- Molasses
+(371, 1, 1.00), (371, 4, 20.00),  -- Cane Syrup
+(372, 1, 1.00), (372, 7, 130.00), -- 9" diam. pie
+(373, 1, 1.00), (373, 7, 130.00), -- Cherry Pie
+(374, 1, 1.00), (374, 3, 140.00), -- Custard
+(375, 1, 1.00), (375, 7, 130.00), -- Lemon meringue
+(376, 1, 1.00), (376, 7, 130.00), -- Mince
+(377, 1, 1.00), (377, 7, 130.00), -- Pumpkin Pie
+(378, 1, 1.00), (378, 5, 4.00),   -- Puddings Sugar
+(379, 1, 1.00), (379, 5, 12.00),  -- 3 teaspoons sugar
+(380, 1, 1.00), (380, 4, 12.00), (380, 5, 4.00), -- Sugar, Brown
+(381, 1, 1.00), (381, 4, 20.00),  -- Syrup
+(382, 1, 1.00), (382, 4, 12.00),  -- table blends sugar
+(383, 1, 1.00), (383, 3, 140.00), -- Tapioca cream pudding
+-- من 384 إلى 395: المكسرات والبذور (Seeds and Nuts) الأنسب لها كوب وملعقة كبيرة
+(384, 1, 1.00), (384, 3, 140.00), -- Almonds
+(385, 1, 1.00), (385, 3, 140.00), -- roasted and salted
+(386, 1, 1.00), (386, 3, 140.00), -- Brazil nuts
+(387, 1, 1.00), (387, 3, 130.00), -- Cashews
+(388, 1, 1.00), (388, 3, 80.00),  -- coconut sweetened
+(389, 1, 1.00), (389, 4, 16.00), (389, 5, 6.00), -- Peanut butter (Salted)
+(390, 1, 1.00), (390, 4, 16.00), (390, 5, 6.00), -- Peanut butter (Unsalted)
+(391, 1, 1.00), (391, 3, 145.00), -- Peanuts
+(392, 1, 1.00), (392, 3, 110.00), -- Pecans
+(393, 1, 1.00), (393, 4, 12.00),  -- Sesame seeds
+(394, 1, 1.00), (394, 3, 130.00), -- Sunflower seeds
+(395, 1, 1.00), (395, 3, 120.00), -- Walnuts
+-- من 396 إلى 399: المشروبات (Drinks) الأنسب لها كوب أو غرام
+(396, 1, 1.00), (396, 3, 240.00), -- Beer
+(397, 1, 1.00), (397, 3, 240.00), -- Gin
+(398, 1, 1.00), (398, 3, 120.00), -- Wines
+(399, 1, 1.00), (399, 3, 120.00)  -- Table wine
+ON DUPLICATE KEY UPDATE ToGramFact = VALUES(ToGramFact);
 
+    CREATE TABLE `fooditemtag` (
+    `FoodItemID` int(11) NOT NULL,
+    `TagID` int(11) NOT NULL,
+    PRIMARY KEY (`FoodItemID`, `TagID`),
+    KEY `TagID` (`TagID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE Model (
-    ModelID INT PRIMARY KEY AUTO_INCREMENT,
-    ModelName VARCHAR(100) NOT NULL,
-    Description TEXT NOT NULL,
-    UploadDate DATETIME NOT NULL,
-    ModelFile VARCHAR(255) NOT NULL
-);
-CREATE TABLE DietRule (
-    RuleID INT PRIMARY KEY AUTO_INCREMENT,
-    DietTypeID INT NOT NULL,
-    RuleLevel VARCHAR(50) NOT NULL,
-    Value FLOAT NOT NULL,
-    Operator VARCHAR(10) NOT NULL,
-    Description TEXT NULL,
-    FOREIGN KEY (DietTypeID) REFERENCES DietType(DietTypeID)
-);
+    INSERT INTO `fooditemtag` (`FoodItemID`, `TagID`) VALUES
+    (9, 18), (25, 2), (50, 5), (53, 5), (57, 3),
+    (57, 18), (68, 6), (71, 1), (93, 5), (100, 1),
+    (102, 1), (103, 1), (104, 2), (105, 3), (106, 3),
+    (107, 3), (108, 3), (109, 3), (110, 3), (111, 3),
+    (112, 3), (113, 3), (114, 3), (115, 3), (116, 3),
+    (117, 3), (118, 3), (118, 18), (119, 3), (119, 18),
+    (120, 3), (121, 3), (122, 3), (123, 3), (124, 3),
+    (125, 3), (126, 3), (127, 3), (128, 3), (129, 3),
+    (130, 3), (131, 3), (132, 4), (133, 4), (134, 4),
+    (135, 4), (136, 4), (137, 4), (138, 4), (139, 4),
+    (140, 4), (141, 4), (142, 4), (143, 4), (144, 4),
+    (145, 4), (146, 5), (147, 5), (148, 5), (149, 5),
+    (150, 5), (151, 5), (152, 5), (153, 5), (154, 5),
+    (155, 5), (156, 5), (157, 5), (158, 5), (159, 5),
+    (160, 5), (161, 5), (162, 5), (163, 5), (164, 5),
+    (165, 5), (166, 6), (167, 6), (168, 6), (169, 6),
+    (170, 6), (171, 6), (172, 6), (173, 6), (174, 6),
+    (175, 6), (176, 6), (177, 6), (178, 6), (179, 6),
+    (180, 6), (181, 6), (182, 6), (183, 6), (184, 6),
+    (185, 7), (186, 7), (187, 7), (188, 7), (189, 7),
+    (190, 7), (191, 7), (192, 7), (193, 7), (194, 3),
+    (195, 3), (196, 3), (197, 3), (198, 3), (199, 3),
+    (200, 3), (201, 3), (202, 3), (203, 3), (204, 8),
+    (205, 8), (206, 8), (207, 8), (208, 8), (209, 8),
+    (210, 8), (211, 8), (212, 8), (213, 8), (214, 8),
+    (215, 9), (216, 9), (217, 9), (218, 9), (219, 9),
+    (220, 9), (221, 10), (222, 10), (223, 10), (224, 11),
+    (225, 11), (226, 11), (227, 11), (228, 11), (229, 11),
+    (230, 11), (231, 11), (232, 11), (233, 11), (234, 11),
+    (235, 11), (236, 9), (237, 12), (238, 12), (239, 12),
+    (240, 12), (241, 12), (242, 12), (243, 13), (244, 13),
+    (245, 13), (246, 13), (247, 13), (248, 13), (249, 13),
+    (250, 14), (251, 14), (252, 6), (253, 14), (254, 14),
+    (255, 11), (256, 11), (257, 11), (258, 11), (259, 11),
+    (260, 11), (261, 11), (262, 15), (263, 11), (264, 11),
+    (265, 11), (266, 11), (267, 11), (268, 11), (269, 16),
+    (270, 11), (271, 16), (272, 16), (273, 16), (274, 16),
+    (275, 11), (276, 11), (277, 11), (278, 16), (279, 11), 
+    (280, 11), (281, 11), (282, 11), (283, 11), (284, 11), 
+    (285, 11), (286, 11), (287, 16), (288, 11), (289, 11), 
+    (290, 16), (291, 11), (292, 11), (293, 11), (294, 11), 
+    (295, 11), (296, 11), (297, 1), (298, 1), (299, 1), 
+    (300, 1), (301, 1), (302, 17), (303, 17), (304, 17), 
+    (305, 1), (306, 16), (307, 17), (308, 17), (309, 17), 
+    (310, 17), (311, 17), (312, 1), (313, 1), (314, 17), 
+    (315, 17), (316, 1), (317, 1), (318, 1), (319, 17), 
+    (320, 17), (321, 17), (322, 17), (323, 17), (324, 17), 
+    (325, 17), (326, 17), (327, 1), (328, 17), (329, 17), 
+    (330, 1), (331, 1), (332, 17), (333, 17), (334, 1), 
+    (335, 17), (336, 17), (337, 17), (338, 17), (339, 2), 
+    (340, 2), (341, 2), (342, 2), (343, 2), (344, 2), 
+    (345, 2), (346, 2), (347, 2), (348, 2), (349, 18), 
+    (350, 18), (351, 18), (352, 18), (353, 18), (354, 18), 
+    (355, 18), (356, 18), (357, 18), (358, 18), (359, 18), 
+    (360, 18), (361, 18), (362, 18), (363, 18), (364, 18), 
+    (365, 18), (366, 18), (367, 19), (368, 3), (368, 18), 
+    (369, 18), (370, 19), (371, 19), (372, 19), (373, 19), 
+    (374, 18), (375, 18), (376, 3), (376, 18), (377, 18), 
+    (378, 18), (379, 18), (380, 18), (381, 18), (382, 19), 
+    (383, 19), (384, 19), (385, 18), (386, 13), (387, 13), 
+    (388, 13), (389, 13), (390, 13), (391, 13), (392, 13), 
+    (393, 13), (394, 13), (395, 13), (396, 13), (397, 13), 
+    (398, 20), (399, 20), (400, 20), (401, 20), (402, 20), 
+    (403, 20), (404, 20), (405, 20), (406, 20), (407, 20), 
+    (408, 20), (409, 20);
 
-CREATE TABLE UserDiseases (
-    UserID INT NOT NULL,
-    DiseasesID INT NOT NULL,
-    PRIMARY KEY (UserID, DiseasesID),
-    FOREIGN KEY (UserID) REFERENCES User(UserID),
-    FOREIGN KEY (DiseasesID) REFERENCES Diseases(DiseasesID)
-);
+    CREATE TABLE `goal` (
+    `GoalID` int(11) NOT NULL AUTO_INCREMENT,
+    `Name` varchar(50) NOT NULL,
+    PRIMARY KEY (`GoalID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE UserDietType (
-    UserID INT NOT NULL,
-    DietTypeID INT NOT NULL,
-    StartDate DATE NOT NULL,
-    EndDate DATE NOT NULL,
-    Goal VARCHAR(100) NOT NULL,
-    DailyCaloriesTarget FLOAT NOT NULL,
-    ProteinTarget FLOAT NOT NULL,
-    FatTarget FLOAT NOT NULL,
-    CarbTarget FLOAT NOT NULL,
-    PRIMARY KEY (UserID, DietTypeID, StartDate),
-    FOREIGN KEY (UserID) REFERENCES User(UserID),
-    FOREIGN KEY (DietTypeID) REFERENCES DietType(DietTypeID)
-);
+    INSERT INTO `goal` (`GoalID`, `Name`) VALUES
+    (1, 'Lose Weight'),
+    (2, 'Gain Weight'),
+    (3, 'Maintain Weight');
 
-CREATE TABLE DietTypeDisease (
-    DietTypeID INT NOT NULL,
-    DiseasesID INT NOT NULL,
-    Allow BOOLEAN NOT NULL,
-    Allowance VARCHAR(100) NOT NULL,
-    PRIMARY KEY (DietTypeID, DiseasesID),
-    FOREIGN KEY (DietTypeID) REFERENCES DietType(DietTypeID),
-    FOREIGN KEY (DiseasesID) REFERENCES Diseases(DiseasesID)
-);
+    CREATE TABLE `image` (
+    `ImageID` int(11) NOT NULL AUTO_INCREMENT,
+    `MealID` int(11) DEFAULT NULL,
+    `UploadTime` datetime DEFAULT NULL,
+    `AnalysisResult` text DEFAULT NULL,
+    `ModelID` int(11) DEFAULT NULL,
+    PRIMARY KEY (`ImageID`),
+    KEY `MealID` (`MealID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE Tag (
-    TagID INT PRIMARY KEY AUTO_INCREMENT,
-    Name VARCHAR(100) NOT NULL,
-    Description TEXT NULL
-);
+    CREATE TABLE `meal` (
+    `MealID` int(11) NOT NULL AUTO_INCREMENT,
+    `UserID` int(11) NOT NULL,
+    `Date` datetime NOT NULL,
+    `TotalCalories` float NOT NULL,
+    `TotalProtein` decimal(10,2) NOT NULL DEFAULT 0.00,
+    `TotalCarbs` decimal(10,2) NOT NULL DEFAULT 0.00,
+    `TotalFat` decimal(10,2) NOT NULL DEFAULT 0.00,
+    `MealTime` time NOT NULL,
+    `MealType` varchar(20) DEFAULT NULL,
+    PRIMARY KEY (`MealID`),
+    KEY `UserID` (`UserID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE DietRuleTag (
-    RuleID INT NOT NULL,
-    TagID INT NOT NULL,
-    PRIMARY KEY (RuleID, TagID),
-    FOREIGN KEY (RuleID) REFERENCES DietRule(RuleID),
-    FOREIGN KEY (TagID) REFERENCES Tag(TagID)
-);
+    CREATE TABLE `mealfooditem` (
+    `MealID` int(11) NOT NULL,
+    `FoodItemID` int(11) NOT NULL,
+    `Quantity` float NOT NULL,
+    `TotalCalories` float NOT NULL,
+    `Name` varchar(100) NOT NULL,
+    `UnitID` int(11) DEFAULT NULL,
+    PRIMARY KEY (`MealID`, `FoodItemID`),
+    KEY `FoodItemID` (`FoodItemID`),
+    KEY `fk_contains_unit` (`UnitID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE DietTypeFoodItem (
-    DietTypeID INT NOT NULL,
-    FoodItemID INT NOT NULL,
-    Allow BOOLEAN NOT NULL,
-    `Default` BOOLEAN NOT NULL,
-    Allowance VARCHAR(100) NOT NULL,
-    PRIMARY KEY (DietTypeID, FoodItemID),
-    FOREIGN KEY (DietTypeID) REFERENCES DietType(DietTypeID),
-    FOREIGN KEY (FoodItemID) REFERENCES FoodItem(FoodItemID)
-);
+    CREATE TABLE `model` (
+    `ModelID` int(11) NOT NULL AUTO_INCREMENT,
+    `ModelName` varchar(100) NOT NULL,
+    `Description` text NOT NULL,
+    `UploadDate` datetime NOT NULL,
+    `ModelFile` varchar(255) NOT NULL,
+    PRIMARY KEY (`ModelID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE DietRuleFoodItem (
-    RuleID INT NOT NULL,
-    FoodItemID INT NOT NULL,
-    PRIMARY KEY (RuleID, FoodItemID),
-    FOREIGN KEY (RuleID) REFERENCES DietRule(RuleID),
-    FOREIGN KEY (FoodItemID) REFERENCES FoodItem(FoodItemID)
-);
-CREATE TABLE FoodItemTag (
-    FoodItemID INT NOT NULL,
-    TagID INT NOT NULL,
-    PRIMARY KEY (FoodItemID, TagID),
-    FOREIGN KEY (FoodItemID) REFERENCES FoodItem(FoodItemID),
-    FOREIGN KEY (TagID) REFERENCES Tag(TagID)
-);
+    CREATE TABLE `report` (
+    `ReportID` int(11) NOT NULL AUTO_INCREMENT,
+    `UserID` int(11) NOT NULL,
+    `Date` date NOT NULL,
+    `Type` enum('info','warning','error') NOT NULL,
+    `Message` text NOT NULL,
+    PRIMARY KEY (`ReportID`),
+    KEY `UserID` (`UserID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    CREATE TABLE `servingunit` (
+    `UnitID` int(11) NOT NULL AUTO_INCREMENT,
+    `Name` varchar(100) NOT NULL,
+    `ShortCode` varchar(50) NOT NULL,
+    PRIMARY KEY (`UnitID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    INSERT INTO `servingunit` (`UnitID`, `Name`, `ShortCode`) VALUES
+    (1, 'Gram', 'g'),
+    (2, 'Kilogram', 'kg'), (3, 'Cup', 'cup'),
+    (4, 'Tablespoon', 'tbsp'), (5, 'Teaspoon', 'tsp'),
+    (6, 'Piece (Medium)', 'pc'), (7, 'Slice', 'slice');
+
+    CREATE TABLE `tag` (
+    `TagID` int(11) NOT NULL AUTO_INCREMENT,
+    `Name` varchar(100) NOT NULL,
+    `Description` text DEFAULT NULL,
+    PRIMARY KEY (`TagID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    INSERT INTO `tag` (`TagID`, `Name`, `Description`) VALUES
+    (1, 'Breads', NULL), (2, 'Soups', NULL),
+    (3, 'Dairy products', NULL), (4, 'Fats', NULL),
+    (5, 'Meat', NULL), (6, 'Fish', NULL),
+    (7, 'Vegetables A-E', NULL), (8, 'Fats- Oils- Shortenings', NULL),
+    (9, 'Meat- Poultry', NULL), (10, 'Fish- Seafood', NULL),
+    (11, 'Fruits', NULL), (12, 'Breads- Cereals- Grains', NULL),
+    (13, 'Seeds and Nuts', NULL), (14, 'Vegetables', NULL),
+    (15, 'Sweets', NULL), (16, 'Beverages', NULL),
+    (17, 'Cereals', NULL), (18, 'Desserts', NULL),
+    (19, 'Jams', NULL), (20, 'Drinks', NULL);
+
+    -- 1. جدول user
+    CREATE TABLE `user` (
+    `UserID` int(11) NOT NULL AUTO_INCREMENT,
+    `FirstName` varchar(50) NOT NULL,
+    `LastName` varchar(50) NOT NULL,
+    `Email` varchar(255) NOT NULL,
+    `Password` varchar(128) NOT NULL,
+    `BirthDate` date NOT NULL,
+    `Gender` varchar(10) NOT NULL,
+    `Height` float NOT NULL,
+    `CurrentWeight` float NOT NULL,
+    `DesiredWeight` float NOT NULL,
+    `DailyCalories` float DEFAULT NULL,
+    `JoinDate` datetime NOT NULL,
+    `resetPasswordToken` varchar(255) DEFAULT NULL,
+    `verificationCode` varchar(10) DEFAULT NULL,
+    `isVerified` tinyint(1) NOT NULL DEFAULT 0,
+    `resetPasswordExpires` bigint(20) DEFAULT NULL,
+    `ActiveLevelID` int(11) NOT NULL,
+    `GoalID` int(11) NOT NULL,
+    PRIMARY KEY (`UserID`),
+    UNIQUE KEY `Email` (`Email`),
+    UNIQUE KEY `Email_2` (`Email`),
+    KEY `ActiveLevelID` (`ActiveLevelID`),
+    KEY `GoalID` (`GoalID`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    -- 2. جدول userdiettype (مفتاح أساسي مركب)
+    CREATE TABLE `userdiettype` (
+    `UserID` int(11) NOT NULL,
+    `DietTypeID` int(11) NOT NULL,
+    `StartDate` date NOT NULL,
+    `EndDate` date NOT NULL,
+    `Goal` varchar(100) NOT NULL,
+    `DailyCaloriesTarget` float NOT NULL,
+    `ProteinTarget` float NOT NULL,
+    `FatTarget` float NOT NULL,
+    `CarbTarget` float NOT NULL,
+    PRIMARY KEY (`UserID`, `DietTypeID`, `StartDate`),
+    KEY `DietTypeID` (`DietTypeID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    -- 3. جدول userdiseases (مفتاح أساسي مركب)
+    CREATE TABLE `userdiseases` (
+    `UserID` int(11) NOT NULL,
+    `DiseasesID` int(11) NOT NULL,
+    PRIMARY KEY (`UserID`, `DiseasesID`),
+    KEY `DiseasesID` (`DiseasesID`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    
