@@ -51,10 +51,15 @@ exports.resetPassword = async (req, res) => {
       [token, currentTime]
     );
     if (rows.length === 0) return res.status(400).json({ error: 'الرابط غير صالح أو انتهت صلاحيته' });
+    // 1. استخراج بيانات المستخدم الذي صاحب هذا التوكن
+    const userEmail = rows[0].Email; 
+
+    // 2. تشفير كلمة المرور الجديدة قبل حفظها في قاعدة البيانات
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await db.query(
-      "UPDATE `user` SET Password = ?, resetPasswordToken = NULL, resetPasswordExpires = NULL WHERE resetPasswordToken = ?", 
-      [newPassword, token]
+      "UPDATE `user` SET Password = ?, resetPasswordToken = NULL, resetPasswordExpires = NULL WHERE Email = ?", 
+      [hashedPassword, userEmail]
     );
     res.status(200).json({ message: 'تم تحديث كلمة المرور بنجاح ✅' });
   } catch (err) {
