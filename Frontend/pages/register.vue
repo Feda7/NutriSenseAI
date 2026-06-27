@@ -96,7 +96,8 @@ const isFormValid = computed(() => {
 // ✅ تسجيل الدخول
 const handleLogin = async () => {
   errorMessage.value = ''
-
+  localStorage.removeItem('userId');
+  localStorage.removeItem('user');
   try {
     const response = await fetch('http://localhost:5000/api/login', {
       method: 'POST',
@@ -108,10 +109,13 @@ const handleLogin = async () => {
     })
 
     const result = await response.json()
-    console.log("Login response:", result)
-    //  الأسطر المحدثة والصحيحة:
-if (response.ok) {
-  console.log("Login response:", result.user)
+
+    if (response.ok) {
+      // حفظ البيانات الجديدة
+      localStorage.setItem('user', JSON.stringify(result.user));
+      localStorage.setItem('userId', result.user.id);
+
+    console.log("Login response:", result.user)
 
   // 1. نخزن بيانات المستخدم كاملة كما هي
   localStorage.setItem('user', JSON.stringify(result.user))

@@ -104,7 +104,9 @@ onMounted(() => {
           next.focus()
         } else {
           // بدلاً من استدعاء handleLogin غير الموجودة، نستدعي الدالة الموجودة goNext
-           handleLogin()
+          if (isFormValid.value) {
+            goNext()
+          }
         }
       }
     })

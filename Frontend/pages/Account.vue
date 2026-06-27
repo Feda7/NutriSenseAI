@@ -403,6 +403,7 @@ const submitForm = async () => {
   if (res.success) {
     // حفظ الإيميل في المتصفح لاستخدامه في صفحة التفعيل
     localStorage.setItem('pendingEmail', register2.value.Email);
+    register2.value = null;
     // التحويل الفوري لصفحة التحقق المنفصلة
     router.push('/verify-account');
   }
@@ -411,6 +412,7 @@ const submitForm = async () => {
     alert(err.data?.message || 'Email already exists or server error');
   }
 }
+
 
 import { onMounted } from 'vue'
 
