@@ -54,23 +54,11 @@
 import MealCard from "./MealCard.vue";
 
 const props = defineProps({
-  meals: {
-    type: Object,
-    required: true
-  },
+  meals: { type: Object, required: true },
   // 🌟 تم التعديل: استقبلنا كائن الـ mealIds المرسل من صفحة food.vue الرئيسية لضمان وصول المعرفات للكروت
-  mealIds: {
-    type: Object,
-    default: () => ({ breakfast: null, lunch: null, dinner: null, snacks: null })
-  },
-  dietType: {
-    type: [String, Object, Number], 
-    default: null
-  },
-  diseases: {
-    type: Array,
-    default: () => []
-  }
+  mealIds: {type: Object, default: () => ({ breakfast: null, lunch: null, dinner: null, snacks: null })},
+  dietType: {type: [String, Object, Number], default: null},
+  diseases: {type: Array, default: () => []}
 });
 
 // 🌟 تم التعديل: أضفنا refreshMeals للـ emits لكي تصل إشارة التحديث لصفحة food.vue الرئيسية وتنفذ fetchMeals()

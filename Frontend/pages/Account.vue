@@ -68,7 +68,7 @@
           <input
             v-model="localData.currentWeight"
             type="number"
-            min="0"
+            min="25"
             placeholder="Enter your current weight"
             class="w-full border rounded-lg px-4 py-2"
           />
@@ -80,7 +80,7 @@
           <input
             v-model="localData.targetWeight"
             type="number"
-            min="0"
+            min="25]"
             placeholder="Enter your target weight"
             class="w-full border rounded-lg px-4 py-2"
           />
@@ -91,7 +91,7 @@
           <label class="block text-gray-700 mb-1">Height (cm)</label>
           <input
             v-model="localData.height"
-            min="0"
+            min="50"
             type="number"
             placeholder="Enter your height in cm"
             class="w-full border rounded-lg px-4 py-2"
@@ -248,8 +248,6 @@ import { ref, computed, watch } from 'vue'
     Router
 ========================= */
 const router = useRouter()
-
-
 
 /* =========================
     Base data
@@ -413,10 +411,6 @@ const submitForm = async () => {
     alert(err.data?.message || 'Email already exists or server error');
   }
 }
-
-
-
-
 
 import { onMounted } from 'vue'
 

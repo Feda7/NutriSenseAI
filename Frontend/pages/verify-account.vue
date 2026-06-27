@@ -29,9 +29,6 @@
         </button>
       </div>
 
-
-
-
       <p v-if="message"  class="mt-4 text-sm" :class="isError ? 'text-red-500' : 'text-green-600'">
         {{ message }}
       </p>
@@ -39,7 +36,6 @@
       <button @click="router.back()" class="block w-full text-center mt-4 text-sm text-gray-500 hover:text-green-600">
         Back
       </button>
-
 
     </div>
   </div>
