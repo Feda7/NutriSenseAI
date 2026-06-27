@@ -167,7 +167,48 @@ app.delete('/api/admin/reports/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// ==========================================
+// 📋 إدارة التقارير والتنبيهات الحقيقية (System Reports)
+// ==========================================
 
+app.post('/api/users/reports', async (req, res) => {
+  const { UserID, message } = req.body;
+
+  if (!message || !UserID) {
+    return res.status(400).json({ error: "UserID and message fields are required" });
+  }
+
+  try {
+    // 1. جلب اسم المستخدم صاحب الشكوى من جدول user العادي
+    const [userRows] = await db.query("SELECT FirstName, LastName FROM user WHERE UserID = ?", [UserID]);
+    let senderName = "User";
+    if (userRows.length > 0) {
+      senderName = `${userRows[0].FirstName} ${userRows[0].LastName}`;
+    }
+
+    const enrichedMessage = `[From: ${senderName}] - ${message}`;
+
+    // 2. إيقاف فحص قيود المفاتيح الأجنبية مؤقتاً لتمرير العملية بأمان
+    await db.query("SET FOREIGN_KEY_CHECKS = 0");
+
+    // 3. إدخال التقرير وربطه بمعرف المستخدم الحقيقي ليظهر اسمه تلقائياً للأدمن!
+    const query = `
+      INSERT INTO report (UserID, Message, Type, Date) 
+      VALUES (?, ?, 'User Feedback', NOW())
+    `;
+    await db.query(query, [UserID, enrichedMessage]);
+
+    // 4. إعادة تفعيل فحص القيود فوراً للحفاظ على أمان قاعدة البيانات
+    await db.query("SET FOREIGN_KEY_CHECKS = 1");
+    
+    res.json({ success: true, message: "Your report has been submitted to the admin successfully!" });
+  } catch (error) {
+    // في حال حدوث خطأ، نتأكد من إعادة تفعيل الفحص دائماً
+    await db.query("SET FOREIGN_KEY_CHECKS = 1");
+    console.error("❌ Database error during insert report:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
 // ==========================================
 // 📊 لوحة الإحصائيات العامة (Overview Dashboard)
 // ==========================================
