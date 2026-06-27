@@ -114,11 +114,9 @@ const emit = defineEmits(["addFood", "uploadImage", "refreshMeals"]);
 const manualInput = ref(false);
 const isEditing = ref(false); // 👈 متغير لمتابعة حالة التعديل
 const recommendation = ref("");
-
 const search = ref("");
 const results = ref([]);
 const selectedFood = ref(null);
-
 const quantity = ref(1);
 const unitId = ref(1);
 const units = ref([]);

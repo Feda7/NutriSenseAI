@@ -175,7 +175,7 @@ async function analyzeImageForMeal(mealName, imageFile) {
         const userId = getUserId();
         if (!userId) return;
 
-        // 1. إرسال الصورة إلى سيرفر الذكاء الاصطناعي ببايثون
+        // 1. إرسال الصورة لسيرفر الذكاء الاصطناعي
         const formData = new FormData();
         formData.append('image', imageFile); 
 
@@ -184,58 +184,52 @@ async function analyzeImageForMeal(mealName, imageFile) {
             body: formData 
         });
 
-        if (!aiResponse.ok) {
-            throw new Error('AI analysis failed');
-        }
+        if (!aiResponse.ok) throw new Error('AI analysis failed');
 
         const aiResult = await aiResponse.json();
         const foodLabel = aiResult.class_name ? aiResult.class_name.replace(/_/g, ' ') : 'Food Item';
-        console.log("AI Recognized: 🥳", foodLabel); 
+        console.log("AI Recognized Text Label: 🥳", aiResult.class_name); 
 
-        // طلب حجم الحصة من المستخدم
-        const userInput = prompt(
-            `AI successfully recognized: "${foodLabel}" 🍕\n\n` +
-            `Please specify how much you actually consumed.\n` +
-            `Available serving metrics: (g, cup, tbsp, tsp, pc, slice)\n\n` +
-            `Enter amount (e.g., 1 for full portion, 0.5 for half, or number of pieces/grams):`, 
-            "1"
-        );
-        
-        if (userInput === null) {
-            console.log("User cancelled meal logging.");
-            return;
+        // 2. طلب المدخلات من المستخدم (يمكنه الآن كتابة 0.5 أو 0.25)
+        const userInputQty = prompt(`AI detected: "${foodLabel}"\nEnter QUANTITY (e.g., 1, 0.5, 0.25):`, "1");
+        if (userInputQty === null) return; 
+
+        const userInputUnit = prompt(`Choose UNIT:\n-> Piece\n-> Gram\n-> Slice\n-> Cup\n-> Tablespoon\n-> Teaspoon`, "Piece");
+        if (userInputUnit === null) return;
+
+        // التحويل لعدد عشري مع دعم الحماية البرمجية من القيم الخاطئة
+        let finalQuantity = parseFloat(userInputQty);
+        if (isNaN(finalQuantity) || finalQuantity <= 0) {
+            finalQuantity = 1; // القيمة الافتراضية في حال الإدخال الخاطئ
         }
 
-        const finalQuantity = parseFloat(userInput) || 1;
-
-        // 2. إرسال الحصة المستلمة إلى الباك إند الخاص بنود
-        const backendResponse = await fetch('http://localhost:5000/api/meal/add-by-ai', {
+        // 3. إرسال النص مباشرة إلى مسار الـ API الأصلي في الباك إند
+        const backendResponse = await fetch('http://localhost:5000/api/meal/add-meal-ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 userId: userId,
                 mealType: mealName,
                 modelLabel: aiResult.class_name, 
-                quantity: finalQuantity
+                quantity: finalQuantity, // سيُرسل الآن كـ 0.5 أو 0.25 بنجاح
+                unitChosen: userInputUnit.trim().toLowerCase()
             })
         });
 
         if (!backendResponse.ok) {
             const errData = await backendResponse.json();
-            throw new Error(errData.error || 'Backend logging failed');
+            throw new Error(errData.error || 'Backend original flow failed');
         }
 
         const finalResult = await backendResponse.json();
 
-        // 3. استدعاء الدالة الموحدة لتحديث الواجهة فوراً بزرع المعرفات الجديدة
+        // 4. تحديث الواجهة فوراً بناءً على المسار الأصلي
         await fetchMeals();
-
-        const detectedFood = finalResult.foodName || foodLabel;
-        alert(`Success! Logged (${finalQuantity}) serving of ${detectedFood} to your ${mealName}. 🎉`);
+        alert(finalResult.message || `Successfully logged your meal!`);
 
     } catch (err) {
-        console.error("AI automated analysis error:", err);
-        alert(err.message || "Failed to analyze image with AI. Please try again.");
+        console.error("AI original flow error:", err);
+        alert(err.message || "Failed to process image through original path.");
     }
 }
 </script>

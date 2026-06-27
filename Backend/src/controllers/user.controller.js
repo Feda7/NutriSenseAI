@@ -4,7 +4,6 @@ const nodemailer = require('nodemailer');
 const { db, findUserByCredentials } = require('../config/db');
 
 // إنشاء مستخدم جديد وتحديد الدايت
-// إنشاء مستخدم جديد وتحديد الدايت
 exports.createUser = async (req, res) => {
   try {
     const { FirstName, LastName, Email, Password, BirthDate, Gender, Height, CurrentWeight, DesiredWeight, ActiveLevelID, GoalID, DietTypeID, MedicalConditions } = req.body;
@@ -85,7 +84,7 @@ exports.createUser = async (req, res) => {
               <h2 style="color:#16a34a;">NutriSenseAI</h2>
               <p>Your verification code is:</p>
               <h1 style="font-size:40px; letter-spacing:10px; color:#1e293b;">${otpCode}</h1>
-             </div>`
+            </div>`
     };
 
     // محاولة الإرسال داخل try/catch صغيرة لضمان عدم توقف السيرفر

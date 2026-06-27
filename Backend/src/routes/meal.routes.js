@@ -10,7 +10,7 @@ router.post('/meal', mealController.createMeal);
 router.post('/meal/item', mealController.addFoodToMeal);
 router.get('/meal/today/:userId', mealController.getTodayMeals);
 router.get('/meal/:mealId', mealController.getMeal);
-router.post('/meal/add-by-ai', mealController.addMealByAIName);
+router.post('/meal/add-meal-ai', mealController.addMealByAIName);
 
 // 🔥 مسارات صفحة الهوم والمقترحات
 router.get('/home-data/:userId', mealController.getHomeData);

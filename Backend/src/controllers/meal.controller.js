@@ -128,6 +128,7 @@ exports.getMeal = async (req, res) => {
 };
 
 // 4. جلب وجبات وعناصر اليوم الحالي للمستخدم (المسؤولة عن حساب وعرض السعرات التراكمية بالهوم)
+// في ملف الباك إند:
 exports.getTodayMeals = async (req, res) => {
   const { userId } = req.params;
   try {
@@ -141,11 +142,18 @@ exports.getTodayMeals = async (req, res) => {
     const mealData = await Promise.all(meals.map(async meal => {
 
       // 🌟 تعديل ذهبي: أضفنا mfi.FoodItemID ليتم إرساله للفرونت إند لأجل عمليات الحذف والتعديل
+      // 🌟 هذا هو الاستعلام الذي يحتاج للتعديل:
       const [items] = await db.query(`
-        SELECT mfi.FoodItemID AS foodItemId, f.Name AS name, mfi.TotalCalories AS totalCalories, 
-              mfi.Quantity AS quantity, mfi.UnitID AS unitId,
-              f.Protein AS protein, f.Carbs AS carbs, f.Fat AS fat, 
-              f.Fiber AS fiber, f.Sodium AS sodium, f.Cholesterol AS cholesterol
+        SELECT 
+            mfi.FoodItemID AS foodItemId, 
+            f.Name AS name, 
+            mfi.TotalCalories AS totalCalories, 
+            mfi.Quantity AS quantity, 
+            mfi.UnitID AS unitId,
+            -- الحساب الديناميكي للماكروز
+            ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Protein, 0), 2) AS protein,
+            ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Carbs, 0), 2) AS carbs,
+            ROUND(IF(f.Calories > 0, (mfi.TotalCalories / f.Calories) * f.Fat, 0), 2) AS fat
         FROM mealfooditem mfi 
         JOIN fooditem f ON mfi.foodItemId = f.FoodItemID 
         WHERE mfi.MealID = ?`, [meal.MealID]
@@ -299,11 +307,15 @@ exports.deleteMeal = async (req, res) => {
 };
 
 // 10. تسجيل وجبة جديدة تم التعرف عليها بواسطة الذكاء الاصطناعي (AI Model)
-exports.addMealByAIName = async (req, res) => {
-  const { userId, mealType, modelLabel } = req.body;
 
-  try {
-    const formattedLabel = modelLabel.replace(/_/g, ' ');
+exports.addMealByAIName = async (req, res) => {
+    try {
+        console.log("============= 🔴 Starting Secure Request Processing 🔴 =============");
+        const { userId, mealType, modelLabel, quantity, unitChosen } = req.body;
+
+        if (!userId || !mealType || !modelLabel) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
 
     // جلب السجل بالبحث المرن
     const [foodRows] = await db.query(
@@ -367,7 +379,121 @@ exports.addMealByAIName = async (req, res) => {
     console.error("❌ AI Meal Logging Database Error:", err);
     return res.status(500).json({ error: 'Database error occurred while saving AI meal' });
   }
-};
+
+        const formattedLabel = modelLabel.toLowerCase().trim();
+        
+        // 🌟 التعامل مع الكسور والأرقام العشرية بدقة بالإنجليزي
+        const currentQty = parseFloat(quantity) || 1;
+        const currentUnit = unitChosen ? unitChosen.trim().toLowerCase() : 'piece';
+
+        // 1. جلب بيانات الأكلة والسعرات مباشرة من الداتابيس فقط (بدون أي خطط بديلة)
+        const queryResultFood = await db.query(
+            "SELECT FoodItemID, Name, Calories FROM fooditem WHERE LOWER(ModelLabel) = ? OR LOWER(Name) = ? LIMIT 1",
+            [formattedLabel, formattedLabel]
+        );
+        
+        const foodRows = queryResultFood && queryResultFood[0] ? queryResultFood[0] : [];
+
+        if (!foodRows || foodRows.length === 0 || !foodRows[0]) {
+            return res.status(404).json({ error: `Food item '${modelLabel}' not found in database.` });
+        }
+
+        const foodItem = foodRows[0];
+        const foodItemId = foodItem.FoodItemID;
+        const foodName = foodItem.Name; 
+        const baseCalories = parseFloat(foodItem.Calories) || 0;
+
+        // 🌟 معالجة القياسات الستة بالإنجليزية تماماً ومطابقتها مع الـ Multiplier
+        let unitId = 1; 
+        let unitMultiplier = 1.0; 
+
+        if (currentUnit === 'piece' || currentUnit === 'pc') {
+            unitId = 1;
+            unitMultiplier = 1.0;
+        } else if (currentUnit === 'gram' || currentUnit === 'g') {
+            unitId = 2;
+            unitMultiplier = 0.01; 
+        } else if (currentUnit === 'slice') {
+            unitId = 3;
+            unitMultiplier = 1.0;
+        } else if (currentUnit === 'cup') {
+            unitId = 4;
+            unitMultiplier = 2.0; 
+        } else if (currentUnit === 'tablespoon') {
+            unitId = 5;
+            unitMultiplier = 0.15;
+        } else if (currentUnit === 'teaspoon') {
+            unitId = 6;
+            unitMultiplier = 0.05;
+        } else if (currentUnit === 'bowl') {
+            unitId = 4; 
+            unitMultiplier = 2.0;
+        }
+
+        // حساب السعرات الإجمالية بناءً على الكمية والوحدة المحددة
+        const totalCalories = parseFloat((baseCalories * currentQty * unitMultiplier).toFixed(2));
+
+        // 2. جلب وجبة اليوم للمستخدم أو إنشاؤها
+        const queryResultMeal = await db.query(
+            "SELECT MealID FROM meal WHERE UserID = ? AND LOWER(MealType) = ? AND Date = CURDATE() LIMIT 1",
+            [userId, mealType.toLowerCase().trim()]
+        );
+        const mealRows = queryResultMeal && queryResultMeal[0] ? queryResultMeal[0] : [];
+
+        let mealId = null;
+        if (mealRows && mealRows.length > 0 && mealRows[0]) {
+            mealId = mealRows[0].MealID;
+        }
+
+        if (!mealId) {
+            const now = new Date();
+            const mealTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                            now.getMinutes().toString().padStart(2, '0') + ':' + 
+                            now.getSeconds().toString().padStart(2, '0');
+
+            const [insertMeal] = await db.query(
+                `INSERT INTO meal (UserID, MealType, MealTime, Date, TotalCalories, TotalProtein, TotalCarbs, TotalFat) 
+                 VALUES (?, ?, ?, CURDATE(), 0, 0, 0, 0)`,
+                [userId, mealType, mealTime]
+            );
+            
+            mealId = insertMeal?.insertId;
+        }
+
+        console.log(`📊 Approved Data: MealID=${mealId} | FoodItemID=${foodItemId} | Calories=${totalCalories}`);
+
+        // 4. الإدخال الذكي في جدول mealfooditem والتحديث في حال التكرار
+        await db.query(
+            `INSERT INTO mealfooditem (MealID, FoodItemID, Quantity, UnitID, TotalCalories) 
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE 
+                Quantity = Quantity + VALUES(Quantity),
+                TotalCalories = TotalCalories + VALUES(TotalCalories),
+                UnitID = VALUES(UnitID)`,
+            [mealId, foodItemId, currentQty, unitId, totalCalories]
+        );
+
+        // 5. التحديث التراكمي لجدول meal لتحديث السعرات في الـ UI فوراً
+        await db.query(
+            `UPDATE meal SET TotalCalories = COALESCE(TotalCalories, 0) + ? WHERE MealID = ?`,
+            [totalCalories, mealId]
+        );
+
+        console.log(`✅ Saved successfully! MealID: ${mealId} | Item: ${foodName}`);
+
+        // 6. صياغة النص الإنجليزي بالكامل للإشعارات والواجهة
+        const formattedMealType = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase();
+
+        return res.status(200).json({ 
+            success: true, 
+            message: `Successfully added ${foodName} (${currentQty} ${currentUnit}) to your ${formattedMealType}!`
+        });
+
+    } catch (error) {
+        console.error("❌ Error in addMealByAIName:", error);
+        return res.status(500).json({ error: "Internal Server Error: " + error.message });
+    };
+
 // 1. دالة حذف أكلة من الوجبة
 exports.deleteFoodFromMeal = async (req, res) => {
     try {
@@ -388,59 +514,56 @@ exports.deleteFoodFromMeal = async (req, res) => {
 // 2. دالة تعديل الكمية أو الوحدة لأكلة مضافة مسبقاً
 exports.updateFoodInMeal = async (req, res) => {
     try {
-        const mealId = req.params.mealId || req.params.MealID;
-        const foodItemId = req.params.foodItemId || req.params.FoodItemID;
+        const { mealId, foodItemId } = req.params;
         const { quantity, unitId } = req.body;
 
-        // 1. جلب السعرات والماكروز الأساسية لكل 100 جرام للأكلة
+        // 1. جلب بيانات الأكلة الأساسية و معامل التحويل
         const [food] = await db.query('SELECT Calories, Protein, Carbs, Fat FROM fooditem WHERE FoodItemID = ?', [foodItemId]);
-        // 2. جلب معامل التحويل للوحدة المحددة
         const [unit] = await db.query('SELECT ToGramFact FROM fooditemservingunit WHERE foodItemId = ? AND UnitID = ?', [foodItemId, unitId]);
 
-        if (!food.length || !unit.length) {
-            return res.status(404).json({ error: 'Food item or serving unit not found' });
+        // 2. جلب القيم القديمة المسجلة في جدول الوجبة لكي نحسب الفارق
+        const [oldItem] = await db.query('SELECT TotalCalories FROM mealfooditem WHERE MealID = ? AND foodItemId = ?', [mealId, foodItemId]);
+        
+        if (!food.length || !unit.length || !oldItem.length) {
+            return res.status(404).json({ error: 'Data not found' });
         }
 
-        // 3. جلب القيم الحالية المسجلة للأكلة في الوجبة قبل التعديل لخصمها من الإجمالي التراكمي
-        const [oldItem] = await db.query('SELECT Quantity, TotalCalories FROM mealfooditem WHERE MealID = ? AND foodItemId = ?', [mealId, foodItemId]);
-        if (!oldItem.length) {
-            return res.status(404).json({ error: 'This food item does not exist in the specified meal' });
-        }
+        const oldCalories = parseFloat(oldItem[0].TotalCalories);
 
-        const oldCalories = parseFloat(oldItem[0].TotalCalories || 0);
-
-        // 4. حساب القيم الجديدة بناءً على الكمية والوحدة المعدلة
+        // 3. حساب القيم الجديدة
         const toGramFact = unit[0].ToGramFact;
         const factor = (quantity * toGramFact / 100);
 
-        const newCalories = parseFloat((factor * (food[0].Calories || 0)).toFixed(2));
-        const newProtein = parseFloat((factor * (food[0].Protein || 0)).toFixed(2));
-        const newCarbs = parseFloat((factor * (food[0].Carbs || 0)).toFixed(2));
-        const newFat = parseFloat((factor * (food[0].Fat || 0)).toFixed(2));
+        const newCalories = parseFloat((factor * food[0].Calories).toFixed(2));
+        const newProtein = parseFloat((factor * food[0].Protein).toFixed(2));
+        const newCarbs = parseFloat((factor * food[0].Carbs).toFixed(2));
+        const newFat = parseFloat((factor * food[0].Fat).toFixed(2));
 
-        // حساب الفارق في السعرات ليتم تعديله في الجدول الرئيسي للوجبة
-        const calorieDifference = newCalories - oldCalories;
+        // 4. حساب القيم القديمة (بما أننا لا نخزن الماكروز في mealfooditem، نحسبها من السعرات)
+        const ratio = oldCalories / (food[0].Calories || 1);
+        const oldProtein = ratio * food[0].Protein;
+        const oldCarbs = ratio * food[0].Carbs;
+        const oldFat = ratio * food[0].Fat;
 
-        // 5. تحديث سجل الربط بالكمية والسعرات الجديدة تماماً (استبدال وليس جمع)
+        // 5. تحديث جدول الربط (mealfooditem)
         await db.query(
             'UPDATE mealfooditem SET Quantity = ?, UnitID = ?, TotalCalories = ? WHERE MealID = ? AND foodItemId = ?',
             [quantity, unitId, newCalories, mealId, foodItemId]
         );
 
-        // 6. تحديث الإجمالي التراكمي في جدول الوجبات الأساسي (meal) بإضافة الفارق فقط
+        // 6. تحديث جدول الوجبة (meal) بإضافة "الفارق" فقط
         await db.query(
             `UPDATE meal SET 
-                TotalCalories = COALESCE(TotalCalories, 0) + ?, 
-                TotalProtein = COALESCE(TotalProtein, 0) + ?, 
-                TotalCarbs = COALESCE(TotalCarbs, 0) + ?, 
-                TotalFat = COALESCE(TotalFat, 0) + ? 
+                TotalCalories = TotalCalories - ? + ?, 
+                TotalProtein = TotalProtein - ? + ?, 
+                TotalCarbs = TotalCarbs - ? + ?, 
+                TotalFat = TotalFat - ? + ? 
             WHERE MealID = ?`, 
-            [calorieDifference, newProtein, newCarbs, newFat, mealId]
+            [oldCalories, newCalories, oldProtein, newProtein, oldCarbs, newCarbs, oldFat, newFat, mealId]
         );
 
-        res.status(200).json({ message: 'Meal updated successfully', updatedCalories: newCalories });
+        res.status(200).json({ message: 'تم التحديث بنجاح' });
     } catch (error) {
-        console.error('❌ Update Food Error:', error);
-        res.status(500).json({ error: 'An error occurred while updating the meal' });
+        res.status(500).json({ error: 'خطأ في التحديث' });
     }
 };
