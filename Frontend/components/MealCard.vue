@@ -371,42 +371,38 @@ const deleteFood = async (item) => {
 
 
 /* ================= SMART AI RECOMMENDATION (GEMINI) ================= */
+let debounceTimer;
 
 async function generateRecommendation() {
     const food = totals.value;
+    if (!food || Number(food.calories) === 0) return;
+
+    // مسح الطلب السابق إذا تم إرسال طلب جديد بسرعة
+    clearTimeout(debounceTimer);
     
-    // 🛑 شرط الأمان الحماسي: إذا كانت السعرات صفر أو البيانات لم تجهز بعد، أوقفت الدالة فوراً ولا تتصل بجوجل
-    if (!food || Number(food.calories) === 0) {
-        recommendation.value = "";
-        return;
-    }
+    // الانتظار 2 ثانية قبل إرسال الطلب للـ API
+    debounceTimer = setTimeout(async () => {
+        recommendation.value = "Analyzing meal data... ✨";
+        try {
+            const res = await fetch("http://localhost:5000/api/recommendation/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    food: food,
+                    dietType: props.dietType || "No specific diet",
+                    diseases: props.diseases || []
+                })
+            });
 
-    // نص مؤقت يظهر للمستخدم أثناء انتظار رد جيميناي
-    recommendation.value = "Analyzing meal data and generating smart AI recommendations... ✨";
-
-    try {
-        // تأكدي من تحويل القيم لـ Array أو String سليم قبل الإرسال لمنع الـ v-model من تمرير كائنات غريبة أثناء الـ refresh
-        const res = await fetch("http://localhost:5000/api/recommendation/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                food: food,
-                dietType: props.dietType || "No specific diet",
-                diseases: props.diseases || []
-            })
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            recommendation.value = data.recommendation;
-        } else {
-            recommendation.value = "Nutritional values are calculated. Please review your meal details.";
+            if (res.ok) {
+                const data = await res.json();
+                recommendation.value = data.recommendation;
+            } else {
+                recommendation.value = "Review your meal details.";
+            }
+        } catch (error) {
+            recommendation.value = "Service temporarily unavailable.";
         }
-    } catch (error) {
-        console.error("Failed to fetch AI recommendation:", error);
-        recommendation.value = "Unable to connect to the AI recommendation service at the moment.";
-    }
+    }, 2000); 
 }
 </script>
