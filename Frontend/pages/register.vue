@@ -151,9 +151,11 @@ else {
 }
 
 onMounted(() => {
+  //يبحث في الصفحة ويجيب كل عناصر الإدخال (input).
   const inputs = Array.from(document.querySelectorAll('input'))
 
   inputs.forEach((input, index) => {
+    //لكل حقل يضيف ايفينت ليسينر وهو الكي داون ( لما اليوزر يضغط اي زر ف الكيبورد )
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault()

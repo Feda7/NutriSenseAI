@@ -21,7 +21,6 @@
 
     <div class="flex items-center justify-center mt-16">
       <button
-      @click="$emit('next')"
       class=" bg-green-600 text-white font-semibold px-6 py-2 rounded-xl hover:bg-green-700 transition-all "
       
     >
