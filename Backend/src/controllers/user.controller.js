@@ -233,8 +233,14 @@ exports.verifyOTP = async (req, res) => {
     const [user] = await db.query("SELECT * FROM `user` WHERE Email = ? AND verificationCode = ?", [email, code]);
     if (user.length > 0) {
       await db.query("UPDATE `user` SET isVerified = 1, verificationCode = NULL WHERE Email = ?", [email]);
-      res.json({ success: true, message: "Account verified!" });
-    } else {
+    res.json({
+      success: true,
+      message: "Account verified!",
+      user: {
+        id: user[0].UserID,
+        firstName: user[0].FirstName
+      }
+});    } else {
       res.status(400).json({ success: false, message: "Invalid code" });
     }
   } catch (err) {

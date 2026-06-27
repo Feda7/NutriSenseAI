@@ -69,11 +69,14 @@ const handleVerify = async () => {
       body: { email: email, code: otpCode.value }
     })
     
-    message.value = "Account Verified Successfully! 🎉"
-    isError.value = false
-    
-    // التوجيه الفوري لصفحة البروفايل الحقيقية بعد النجاح
-    setTimeout(() => router.push('/profile'), 2000)
+    localStorage.setItem("userId", res.user.id)
+    localStorage.setItem("user", JSON.stringify(res.user))
+
+    message.value = "Account Verified Successfully!"
+
+    setTimeout(() => {
+        router.push("/profile")
+    }, 2000)
   } catch (err) {
     message.value = "Invalid or expired code"
     isError.value = true
