@@ -63,9 +63,9 @@
             </button>
           </div>
 
-<p v-if="errorMessage" class="text-red-500 text-center mt-4 font-bold">
-  {{ errorMessage }}
-</p>
+          <p v-if="errorMessage" class="text-red-500 text-center mt-4 font-bold">
+            {{ errorMessage }}
+          </p>
           
       </div>
     </section>
