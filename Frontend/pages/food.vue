@@ -1,5 +1,5 @@
 <template>
-    <section class="max-full bg-gray-50 lg:px-80 md:px-56" >
+    <section class="max-full bg-gray-50 lg:px-56" >
     <div class="min-h-screen px-6 py-10">
     
     <SummarySection
