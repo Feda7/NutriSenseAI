@@ -103,8 +103,10 @@ onMounted(() => {
         if (next) {
           next.focus()
         } else {
-          // Auto Trans
-          handleLogin()
+          // بدلاً من استدعاء handleLogin غير الموجودة، نستدعي الدالة الموجودة goNext
+          if (isFormValid.value) {
+            goNext()
+          }
         }
       }
     })
